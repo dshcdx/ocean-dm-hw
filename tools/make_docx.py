@@ -21,7 +21,8 @@ import re
 from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT, WD_TAB_LEADER
+from docx.enum.text import (WD_ALIGN_PARAGRAPH, WD_COLOR_INDEX, WD_TAB_ALIGNMENT,
+                            WD_TAB_LEADER)
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
@@ -406,6 +407,14 @@ def build(toc_pages: dict[str, int] | None = None):
             cn(p.add_run(latex_to_text(payload)), "宋体", 12)
         else:
             text = payload
+            if text.startswith("[待补]"):
+                p = doc.add_paragraph()
+                p.paragraph_format.left_indent = Cm(0.6)
+                p.paragraph_format.first_line_indent = Cm(0)
+                r = p.add_run(text)
+                cn(r, "宋体", 11)
+                r.font.highlight_color = WD_COLOR_INDEX.YELLOW
+                continue
             if re.match(r"^\*\*(表|图)\s*\d+", text):
                 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 p.paragraph_format.space_before = Pt(8)
