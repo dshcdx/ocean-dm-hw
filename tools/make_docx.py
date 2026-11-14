@@ -60,7 +60,7 @@ def latex_to_text(s: str) -> str:
     s = re.sub(r"\\frac\{([^{}]*)\}\{([^{}]*)\}", _frac, s)
     s = re.sub(r"\\[a-zA-Z]+\{?", "", s)
     s = s.replace("{", "").replace("}", "").replace("\\", "")
-    for k, v in (("^4", "⁴"), ("^2", "²"), ("^3", "³"), ("^n", "ⁿ")):
+    for k, v in (("^*", "*"), ("^4", "⁴"), ("^2", "²"), ("^3", "³"), ("^n", "ⁿ")):
         s = s.replace(k, v)
     return re.sub(r"\s{2,}", " ", s).strip()
 

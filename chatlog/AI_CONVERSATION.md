@@ -37,6 +37,7 @@
 | 26 | 可以 |  |
 | 27 | Background subagent reviewer-3 finished and wi |  |
 | 28 | Background subagent reviewer-2 finished and wi |  |
+| 29 | 全文检查 |  |
 
 > 第 1 轮起为安装技能、配置 GitHub 等环境准备；第 14 轮起为课程大作业本身的讨论。
 
@@ -17517,4 +17518,482 @@ Let me do the README + push.
 
 ```json
 {"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"README.md\"; s=io.open(p,encoding=\"utf-8\").read()\n\n# 替换主结果表\ni=s.index(\"## 主要结果\"); j=s.index(\"## 两个补充实验\") if \"## 两个补充实验\" in s else s.index(\"## 排版\")\nnew = \"\"\"## 主要结果（N=50, p=30%, 3000 次运行，配对设计）\n\n| 策略 | 重复条数 | 95% CI | 写入 | ticks | 放弃率 |\n|---|---|---|---|---|---|\n| S0 裸跑 | 6.596 | ±0.421 | 0.00 | 60.8 | 20.4% |\n| S1 轮级存档 | 6.747 | ±0.443 | 2.66 | 60.9 | 18.9% |\n| S2 步级存档 | 6.820 | ±0.448 | 5.50 | 61.2 | 18.4% |\n| S3 步级+两相调用日志 | 6.680 | ±0.440 | 14.14 | 62.7 | 19.3% |\n| **S4 扇出账本（逐条）** …（省略 1285 字符）
+```
+
+<details><summary>📤 工具返回（380 字符）</summary>
+
+```
+README �Ѹ���
+
+[OK] ȫ�����ͨ��
+f4c26d2cf99a
+[stderr]
+warning: in the working copy of 'sim/run_batch.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'sim/run_phase.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tools/rev2_stats.py', LF will be replaced by CRLF the next time Git touches it
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Pushed (f4c26d2). Now write the summary answer.
+
+Key points to convey:
+1. Three reviewers all returned 大修; their findings converged on real errors.
+2. What I reworked (implementation + design + report).
+3. What the new results say — including two reversals of v1 conclusions.
+4. What's still weak / open.
+5. Remaining: §11 留白.
+
+Be honest about the cost: the report is now a narrower but more defensible claim.
+
+Also mention pages: 21 pages now (down from 24 because I removed some tables/figures).
+
+Let me write a tight summary.
+
+</details>
+
+### 🤖 助手 · 20:53:55
+
+三份意见都按大修回来了，返工做完了，已推送（`f4c26d2`）。报告从 24 页变成 21 页——变短是因为砍掉了站不住的部分。
+
+## 三位审稿人交叉确认的问题，全部已修
+
+| 问题 | 谁发现 | 修法 |
+|---|---|---|
+| 门槛公式漏 $(N+1)$、且 $N+6$ 应为 $N+5$ | R1/R2/R3 | 改为 $4(N+5)/[p(N+1)]$，N=1 时从 28/p 修正到 12/p |
+| 前向 checkpoint 写没计数，"30 倍/252 倍"虚高 | R1/R2/R3 | 重写写入语义，真实倍数是 **19.9 倍**（不是 252） |
+| 种子不可复现，0.54 的差小于跨种子抖动 | R2 | 改 `blake2b`，`PYTHONHASHSEED` 三组验证均值完全一致 |
+| S4 的幂等键从未参与判断 | R1/R2 | 改成真正读持久化 ack 集合恢复 |
+| S3 没有前置 intent 行 | R1/R2 | 补上，两阶段写现在是真两阶段 |
+| 先行工作未引用（Li 2026、UndoBench 2026） | R3 | 补进 §2，删掉"文献里没有被指出" |
+| 只报了 9 个格子里的 4 个 | R1 | 九个全报 |
+
+## 结论变了三处
+
+**① 步级存档反而更差。** v1 说"步级比轮级少 6.1%"，返工后是**多 0.073 条**（配对比较，Holm 校正后显著）。因为它重跑范围一样是整个扇出，只是恢复点更靠前。
+
+**② "逐条账本是过度设计"这个结论被推翻了。** v1 说"每批 5–10 条最优、逐条浪费"。现在给出的是 $k^*$ 随 $\alpha/\beta$ 的曲线：5–10 → k=10；15–50 → k=5；100 → k=2；**300 以上 → k=1**。按预警场景的合理标定，$k^*=1$，**逐条才是最优**。
+
+**③ "经验交叉点系统性低 8–17%"作废。** 修正公式后，九个格子的比值是 **1.05–1.26**（N≥10），方向反过来——解析式是保守**下界**。N=1 时偏差达一个数量级。
+
+## 站得住的核心结论
+
+- 粗粒度四策略（裸跑/轮级/步级/两相日志）重复分别是 6.60、6.75、6.82、6.68，差异 ≤0.22 条，对基线 ≤3.3%
+- 子效应级账本 0.134 条，**−98.0%**（差值 CI [6.25, 7.13]）
+- 代价：写入 19.9 倍、时间 **+25.8%**（v1 说"总时间更省"是错的，删了）
+- 解析式 $4(N+5)/[p(N+1)]$ 在 N≥10 时准确到 ±20%
+
+## 还留着的问题（写进 §7.2 了）
+
+1. **S3 的负结果有一半是结构决定的**，收益上限约 1/(N+5)，不能表述成"两相日志无用"
+2. **"漏发不是键粒度的功劳"**——模型里没有对端去重，L 只来自超时。这条撤回了 v1 摘要里的一项收益
+3. β（写入成本）完全没标定，没做敏感性网格
+4. 版本化键（`payload_version`）在模型里不存在，预警只发一次
+
+## 状态
+
+- 21 页，4 图 9 表，`python tools/check.py` → `[OK]`
+- 讨论记录 30 轮，已同步
+- 仓库 https://github.com/DSHCDX/ocean-dm-hw
+
+**只剩 §11 那段留白**（你的选题动机）。另外提醒一句：v2 把"原创性"收窄到了"在扇出形状上刻度化 + 批量旋钮曲线 + 补齐代价"，这是三位审稿人都认可的定位；如果你还想冲更强的原创声明，得加对端去重那条实验分支，那是下一步的事。
+
+## 第 29 轮
+
+### 👤 用户 · 20:54:34
+全文检查
+
+<details><summary>🤖 助手推理过程</summary>
+
+The user asks for a full-text check ("全文检查"). I should do a thorough end-to-end verification of the report now:
+
+1. Run the automated check (already OK) — but that's partial.
+2. Do a human-level read of the whole REPORT.md for internal consistency, broken references, leftover v1 numbers, section numbering, figure/table numbering, English/Chinese quote issues, duplicate content, etc.
+3. Verify all numbers in text against CSVs.
+4. Check docx rendering (page count, TOC, figures embedded).
+5. Check for stale references to v1 (e.g., "§5.5"、"§5.6" mentions, section numbers that shifted).
+6. Check section cross-references (§ numbers) are valid.
+7. Check the abstract's claims match body.
+8. Check remaining "v1" mentions are intentional (they document the revision) — but should a course report mention v1/v2? It's honest but might confuse the grader. Hmm — the report now says "修订版 v2" and repeatedly references "v1 报的 252 倍…作废". For a submitted report, referencing its own v1 is unusual; but it's honest and shows the review process. However the grader may find it odd. I should flag this as a decision: keep (shows rigor) or clean (looks like a normal paper).
+
+Let me do the check systematically with scripts:
+- Extract all "§x.y" references and verify those sections exist.
+- Extract all 图/表 refs and verify they exist.
+- Grep for stale numbers (8.242, 0.188, 252, 30 倍, 6.2%, 28%, 8.781, etc.).
+- Check numbers in prose vs CSV for the key ones.
+- Check that section numbering is sequential and TOC matches.
+
+Then read the rendered PDF pages for visual sanity (a few).
+
+Let me write a comprehensive check script and run it, then fix what it finds.
+
+Given context budget is tight, I'll do one script that reports everything, then a fix pass, then rebuild/push.
+
+</details>
+
+**🔧 调用工具** `write`
+
+```json
+{"content": "# -*- coding: utf-8 -*-\n\"\"\"全文体检：交叉引用、旧数字残留、章节编号、图表编号、数字与 CSV 一致性。\"\"\"\nimport io, re, csv, os\n\nmd = io.open(\"report/REPORT.md\", encoding=\"utf-8\").read()\nlines = md.splitlines()\nissues = []\n\n# ---------- 1. 章节编号连续性\nsecs = [(len(m.group(1)), m.group(2)) for m in re.finditer(r\"^(#{2,4}) (.+)$\", md, re.M)]\nh2 = [t for lv, t in secs if lv == 2]\nnums = [re.match(r\"(\\d+)\\.\", t).group(1) for t in h2 if re.match(r\"\\d+\\.\", t)]\nexpected = [str(i) for i in range(1, len(nums) + 1)]\nif nums != expected:\n    issues.append(f\"二级标题编号不连续：{nums}\")\n\n# ---------- 2.  …（省略 2573 字符）
+```
+
+<details><summary>📤 工具返回（121 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\tools\fullcheck.py</path>
+<type>file</type>
+<content>
+Created file
+</content>
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python tools/fullcheck.py 2>&1 | tail -40", "timeoutMs": 300000}
+```
+
+<details><summary>📤 工具返回（425 字符）</summary>
+
+```
+�ᵽ v1/�޶��� ���У�12 �� -> [7, 150, 151, 171, 225, 302, 322, 343, 415, 444, 446, 447]
+
+=== �ṹ ===
+�������� 12 ����ͼ 4 �ţ��� 9 �ţ����� 15 KB
+
+=== ���� ===
+  - ���ƾ����� '252 ��' �����ڵ� 225 �У�$N=50$ ʱ�˱�д 109.26 �Σ��ǲ����浵 5.50 �ε� **19.9 ��**��v1 ���� 252 �����Դ�
+  - ���ƾ����� '8�C17%' �����ڵ� 322 �У�**����Ҫ��д**��$N\ge10$ ʱ����ֵ�ǽ���ֵ�� **1.05�C1.26 ��**��������ʽ��**�����½�**����
+  - S2 ticks ��ֵ 61.18 δ�����ĳ���
+�� 3 ��
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Only 3 issues:
+1. "252 倍" at line 225 — but it's in a parenthetical explaining v1's error. That's intentional. However, for a submitted report, referring to its own v1 is odd. I need to decide.
+2. "8–17%" at line 322 — same, explaining v1's error.
+3. S2 ticks 61.18 not in text — I wrote "61.2" which is fine but check wants 61.18. False positive; adjust check.
+
+So the real question: does the report keep the v1 self-references (12 places)? For a course submission, a grader reading "v1 报的 252 倍来自错误的计数口径" might be confused ("什么 v1？"). It's honest but it's *process* content, not report content. The chat log already documents the revision; the report itself should read as a standalone document.
+
+I think the right call: remove the v1 meta-commentary from the report body, keep the substance (correct numbers), and let §11 AI 协作说明 mention the review-driven revision (that's where process belongs). This makes the report cleaner and avoids confusing the grader.
+
+But it also removes evidence of rigor. The §11 section can carry it: "v1 经三份审稿意见后返工，主要更正包括……" — one paragraph instead of 12 scattered references.
+
+Let me do that:
+- Remove inline "（v1 报的 252 倍来自错误的计数口径，见 A4 的修正说明）" → keep just the number.
+- Remove "**v2 修正**" labels in A4? Those are useful ("v1 只在崩溃恢复时计写入，导致…是错的") but reference v1. Convert to neutral statements: "写入语义：… （若只在恢复时计数，会把 S1/S2 的写入误算成崩溃次数）"。
+- "v1 曾报告'实测比解析值高 28%'，那来自写入计数与种子的双重错误，已作废。" → remove.
+- "v1 曾写'经验值系统性低 8–17%'…已作废" → remove.
+- "v1 里没有写出来" (拷贝步骤) → remove.
+- "这是 v1 最严重的方法缺陷——v1 用 hash(...)…" in §4.4 → rewrite neutrally: "若用 `hash()` 做种子，Python 对字符串哈希按进程加盐，同一配置换进程重跑均值会从 8.14 变到 8.92；改用 blake2b 后跨进程稳定。"
+- "（修订版 v2）" in header → remove.
+- "**v2 的四处实现修改**" in §11 → keep (that's the process section, appropriate).
+
+Then re-run fullcheck with adjusted expectations, rebuild, push.
+
+Also fix fullcheck's ticks check to accept 61.2.
+
+Let me do it.
+
+</details>
+
+### 🤖 助手 · 20:54:55
+
+只有 3 处，其中两处是报告里残留的“v1 如何如何”自我引用——共 12 处。这类过程性叙述应该只留在 §11，正文要能独立成立。
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"report/REPORT.md\"; s=io.open(p,encoding=\"utf-8\").read()\ndef rep(a,b,must=True):\n    global s\n    if a in s: s=s.replace(a,b)\n    elif must: raise SystemExit(\"未找到: \"+a[:40])\n\nrep(\"> 日期：2026-11-14（修订版 v2）\", \"> 日期：2026-11-14\")\nrep(\"（v1 报的 252 倍来自错误的计数口径，见 A4 的修正说明。）\", \"\")\nrep(\"| A4 | 写入语义（**v2 修正**）：每完成一个步骤写 1 次步骤存档（轮级则每 2 步 1 次）；调用级日志另加每次工具调用 2 次（intent + terminal）；子效应账本另加每子效应 2 次 | v1 只在崩溃恢复时计写入，导致 S1/S2 的写入都等于“崩溃次数”，是错的 |\",\n    \"| A4 | 写入语义：每完成一个步骤写 1 次步骤存档（轮级则每 2 步 1 次）；调用级日志另加每次工 …（省略 1714 字符）
+```
+
+<details><summary>📤 工具返回（648 字符）</summary>
+
+```
+ok
+150:| A4 | 写入语义（**v2 修正**）：每完成一个步骤写 1 次步骤存档（
+151:| A5 | 业务截止时间：$1.35\times[\text{单元数}\times1.0+12\times0.2]$ tick�
+171:- **配对设计（v2 改动）**：同一 trial 下五个策略使用同一串随机�
+225:$N=50$ 时账本写 109.26 次，是步级存档 5.50 次的 **19.9 倍**（v1 报的 
+302:$N\ge10$ 时实测/解析落在 0.91–1.16，即式（1）的 $\mathbb{E}[D]$ 部分�
+322:**结论要改写**：$N\ge10$ 时经验值是解析值的 **1.05–1.26 倍**，即�
+343:2. **“重复与丢失是同一缺陷的两面”只在文字上成立。** 模型里
+415:种子由 `dsmodel.make_seed()` 用 `blake2b` 派生，**跨进程稳定**（已用 `P
+444:2. **v1 定稿前，我要求用 `nature-statistics` 与 `nature-reviewer` 做一次�
+446:4. **v2 推翻了 v1 的两个结论**：原“步级比轮级好”变为“步级反
+447:5. **§7.2 第 2 条（漏发不是键粒度的功劳）是我在核对三份意见后
+[stderr]
+δ�ҵ�: ��v1 ���� 252 �����Դ���ļ����ھ����� A4 ������˵������
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+The script raised SystemExit at the second replacement ("（v1 报的 252 倍来自错误的计数口径，见 A4 的修正说明。）") because the actual text differs — the file still has it at line 225 with slightly different content. Since it raised before writing, NO changes were applied (the write happens at the end). Wait — it printed "ok" from the second script and grep shows v1 still at 150, 171, 225, 322... So indeed nothing was written.
+
+Let me check the exact strings at those lines and redo with looser matching (e.g., regex removal of the parenthetical).
+
+Let me look at lines 150, 171, 225, 302, 322 to get exact text, then patch with line-precise edits.
+
+Simpler: use regex-based substitutions keyed on stable substrings.
+
+- Line 150: replace "（**v2 修正**）" → "" and the last cell text.
+- Line 171: replace "（v2 改动）" → "", and rewrite the sentence about hash.
+- Line 225: remove "（v1 报的 ... ）" via regex r"（v1 报的[^）]*）".
+- Line 302/322: remove sentences containing "v1 曾".
+- Line 415: remove "（这一拷贝步骤在 v1 里没有写出来）".
+
+Let me do it with regex, then verify.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io, re\np=\"report/REPORT.md\"; s=io.open(p,encoding=\"utf-8\").read()\n\ns = s.replace(\"> 日期：2026-11-14（修订版 v2）\", \"> 日期：2026-11-14\")\ns = s.replace(\"（**v2 修正**）\", \"\")\ns = s.replace(\"写入语义：每完成一个步骤写 1 次步骤存档（轮级则每 2 步 1 次）；调用级日志另加每次工具调用 2 次（intent + terminal）；子效应账本另加每子效应 2 次 | v1 只在崩溃恢复时计写入，导致 S1/S2 的写入都等于“崩溃次数”，是错的\",\n              \"写入语义：每完成一个步骤写 1 次步骤存档（轮级则每 2 步 1 次）；调用级日志另加每次工具调用 2 次（intent + terminal）；子效应账本另加每子效应 2 次 | 若只在崩溃恢复时计写入，S1/S2 的写入都会被算成“崩溃次数”，两种策略的代价会完全相等——这是必须避免的记账错误\")\ns = s.replace(\"（v2 改 …（省略 721 字符）
+```
+
+<details><summary>📤 工具返回（521 字符）</summary>
+
+```
+ʣ�� v1 �ἰ: 6
+  L151: | A5 | ҵ���ֹʱ�䣺$1.35\times[\text{��Ԫ��}\times1.0+12\times0.2]$ tick��**�����
+  L343: 2. **���ظ��붪ʧ��ͬһȱ�ݵ����桱ֻ�������ϳ�����** ģ������ն˲�ȥ�أ����Բ����ڡ��������ܵ��¶�ʧ������·����$L$ ֻ�ɳ�ʱ��
+  L444: 2. **v1 ����ǰ����Ҫ���� `nature-statistics` �� `nature-reviewer` ��һ��Ԥ��**�����ݻ�ä��
+  L446: 4. **v2 �Ʒ��� v1 ����������**��ԭ���������ּ��á���Ϊ������������ 0.07 ������ԭ�������˱��ǹ�����ơ���Ԥ�������ı궨��
+  L447: 5. **��7.2 �� 2 ����©�����Ǽ����ȵĹ��ͣ������ں˶����������Ҫ��д��ȥ��**���������� v1 ժҪ���һ������������
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+6 remaining mentions, all in §11 (AI 协作说明) and one in A5 line 151 — let me check line 151: it contains "v1" maybe in "v1 用各策略自己的干净运行耗时推算 deadline". That's A5's justification cell. Since §4.2 is body, a v1 reference there should be cleaned. Let me check what it says and rewrite neutrally.
+
+Lines 444/446/447 are §11 — those are appropriate (process narrative).
+
+Line 343: "v1 里被错写成账本的直接收益" — body, should clean.
+
+Let me fix 151 and 343, keeping §11.
+
+Then rebuild, fullcheck, check, push.
+
+Also need to verify the remaining stale-number scan passes (252/8–17% now gone).
+
+Let me patch.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && sed -n '151p;343p' report/REPORT.md | cut -c1-200"}
+```
+
+<details><summary>📤 工具返回（188 字符）</summary>
+
+```
+| A5 | 业务截止时间：$1.35\times[\text{单元数}\times1.0+12\times0.2]$ tick，**与策略无关**；超限即放弃，未送达计漏发 | v1 用各策略自己的干净运行耗时推算 dea
+2. **“重复与丢失是同一缺陷的两面”只在文字上成立。** 模型里接收端不去重，所以不存在“整批被拒导致丢失”这条路径；$L$ 只由超时与放弃产生�
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io, re\np=\"report/REPORT.md\"; s=io.open(p,encoding=\"utf-8\").read()\ns = re.sub(r\"v1 用各策略自己的干净运行耗时推算 deadline，等于给贵策略更宽的时限，使各策略不可比；\",\n           \"若按各策略自己的干净运行耗时推算 deadline，等于给贵策略更宽的时限，各策略就不可比；\", s)\ns = re.sub(r\"这一点在 v1 里被错写成账本的直接收益。\",\n           \"把这一点误读成账本的直接收益，是本模型最容易犯的归因错误。\", s)\nio.open(p,\"w\",encoding=\"utf-8\").write(s)\nprint(\"剩余 v1:\", s.count(\"v1\"))\nPY\npython tools/fullcheck.py 2>&1 | tail -12", "timeoutMs": 300000}
+```
+
+<details><summary>📤 工具返回（123 字符）</summary>
+
+```
+ʣ�� v1: 4
+�ᵽ v1/�޶��� ���У�3 �� -> [444, 446, 447]
+
+=== �ṹ ===
+�������� 12 ����ͼ 4 �ţ��� 9 �ţ����� 15 KB
+
+=== ���� ===
+  ��
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Full check passes: no issues, 12 sections, 4 figures, 9 tables, v1 mentions only in §11 (3 lines, appropriate).
+
+Now:
+1. Rebuild docx.
+2. Run tools/check.py.
+3. Render a couple pages to visually verify (§5.1 tables, figure 4).
+4. Update chatlog, commit, push.
+
+Let me do rebuild + check, then a visual spot check of the first page and §5.5 (k table).
+
+Given context, let me limit to one rendered page (page 1) plus check output.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python tools/make_docx.py 2>&1 | tail -1 && python tools/check.py 2>&1 | tail -6", "timeoutMs": 900000}
+```
+
+<details><summary>📤 工具返回（198 字符）</summary>
+
+```
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 457 KB; 21 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+���� 28 KB / docx 457 KB
+
+[OK] ȫ�����ͨ��
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nimport os, pymupdf\ndoc = pymupdf.open(os.path.join(os.environ[\"TEMP\"], \"REPORT_final.pdf\"))\nprint(\"pages:\", len(doc))\n# 找 §5.5 批量旋钮那页\nfor i,pg in enumerate(doc):\n    if \"批量旋钮\" in pg.get_text() and \"k*\" in pg.get_text().replace(\" \", \"\"):\n        pg.get_pixmap(dpi=92).save(os.path.join(os.environ[\"TEMP\"], \"v2p.png\")); print(\"5.5 在 p\", i+1); break\nEOF\ncp \"$TEMP/v2p.png\" /d/work/default-workspace/ocean-dm-hw/v2p.png 2>/dev/null; echo ok", "timeoutMs": 300000}
+```
+
+<details><summary>📤 工具返回（24 字符）</summary>
+
+```
+pages: 21
+5.5 �� p 19
+ok
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\v2p.png"}
+```
+
+<details><summary>📤 工具返回（141 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\v2p.png</path>
+<type>image</type>
+<content>
+image/png image, 761x1076 px, 111572 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Two defects visible on this page:
+
+1. **`k^*` 渲染成了字面 `k^*`** — the inline math `$k^*$` isn't converted by latex_to_text (it strips $ then leaves `k^*`; superscript `*` isn't in my replacement map). It shows "最优批长 k^* 决定" — ugly. Fix: add `^*` → `*` or render as "k*". Better: replace `k^*` with `k*` in rendering. Add to the superscript map: `("^*", "*")`.
+
+2. **文件树里表号错乱**：`batch_results.csv  # 表 6` ✓, `phase_sensitivity.csv # 表 9` ✗ (should be 表 7), `crossover_all.csv # 表 9` ✓. My earlier replacement `# 表 5\n` → `# 表 7\n` didn't apply because the line has trailing content? Actually the line is `│   ├── phase_sensitivity.csv  # 表 5` — my replace targeted "# 表 5\n" but the tree line ends with newline... it should have matched. Hmm, but the file shows 表 9 for phase — meaning "# 表 7"→"# 表 9" replacement hit it after "# 表 5"→"# 表 7" converted it. Yes: sequential replacement chained. Fix: set to 表 7.
+
+3. Also "图 1-3"/"图 4-5" comments — actual figures are 图 1-3 from analyze.py? analyze.py makes fig1,2,3 ✓; analyze_batch makes fig4 (batch), fig5 (phase) — but the report has only 4 figures (no phase figure). So analyze_batch's fig5_phase.png is unused. The tree says "图 4-5" — should be "图 4".
+
+Let me fix:
+- phase_sensitivity.csv # 表 7
+- analyze_batch.py # 图 4
+- "图 4-5" → "图 4" in the run commands
+- add ^{*} rendering
+
+Also check: "rev2_stats.csv # 两两比较与 Holm 校正" fine.
+
+Let me apply, rebuild, verify the same page, then push.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"report/REPORT.md\"; s=io.open(p,encoding=\"utf-8\").read()\ns=s.replace(\"│   ├── phase_sensitivity.csv  # 表 9\",\"│   ├── phase_sensitivity.csv  # 表 7\")\ns=s.replace(\"│   └── analyze_batch.py   # 批量与相位出图（图 4–5）\",\"│   └── analyze_batch.py   # 批量旋钮出图（图 4）\")\ns=s.replace(\"python sim/analyze_batch.py # 图 4–5\",\"python sim/analyze_batch.py # 图 4\")\nio.open(p,\"w\",encoding=\"utf-8\").write(s)\nprint(\"树已修\")\nPY\npython - <<'PY'\nimport io\np=\"tools/make_docx.py\"; s=io.open(p,encoding=\"utf-8\").read …（省略 661 字符）
+```
+
+<details><summary>📤 工具返回（223 字符）</summary>
+
+```
+������
+ok
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 457 KB; 21 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+���� 28 KB / docx 457 KB
+
+[OK] ȫ�����ͨ��
+k^* ����: True
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+`k^*` still present on page 15. My replacement targeted the tuple with escaped unicode — maybe the actual source uses literal characters (⁴, ², ³, ⁿ) not escapes. Let me check the file content around that loop.
+
+Let me grep.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && grep -n '\\^4\\|\\^2\\|u2074' tools/make_docx.py | head -3; grep -n \"k\\^\\*\" report/REPORT.md | head -5"}
+```
+
+<details><summary>📤 工具返回（725 字符）</summary>
+
+```
+63:    for k, v in (("^4", "⁴"), ("^2", "²"), ("^3", "³"), ("^n", "ⁿ")):
+22:4. **批量旋钮给出的是曲线，不是一个答案。** 把扇出按每批 $k$ 条切分（$k=N$ 即调用级，$k=1$ 即子效应级），重复近似正比于 $k$、写入等于 $2N/k$。最优批长随代价比单调下降：$\alpha/\beta$ 在 5–10 时 $k^*=10$，15–50 时 $k^*=5$，100 时 $k^*=2$，**300 以上时 $k^*=1$**。按预警场景的合理标定（一条重复折算约 1 分钟人工），$k^*=1$，即**逐条账本才是最优**；“逐条是过度设计”只在 $\alpha/\beta<50$ 时成立。
+253:k^*\approx\sqrt{\frac{2\beta N}{\alpha c}}\tag{2}
+260:| $k^*$ | 10 | 10 | 5 | 5 | 5 | 2 | 1 | 1 |
+262:**这条曲线才是贡献**：批量不是“越细越好”也不是“越粗越好”，而是由重复与写入的相对代价决定。按 §6.3 的标定（$\alpha/\beta\approx6\times10^4$），$k^*=1$，即**逐条账本才是最优**；只有 $\alpha/\beta<50$ 时“每批 5–10 条”才成立。
+328:**但这个数只能当量级用**：如果一条重复的边际代价按“多一条短信的成本”算，$\alpha/\beta$ 会掉到 10 的量级，此时门槛附近，$k^*$ 落在 5–10。全文只在 §5.5 的曲线里使用这个比值，不再给出唯一结论。
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+The source uses literal `⁴` etc., so my replace failed. Patch line 63 directly to include `("^*", "*")` before the others.
+
+Order matters: "^*" must be replaced before "^2" etc.? They're distinct substrings, no conflict. But "^*" replacement should come first for clarity.
+
+Let me patch by replacing the literal line.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"tools/make_docx.py\"; s=io.open(p,encoding=\"utf-8\").read()\nold='    for k, v in ((\"^4\", \"⁴\"), (\"^2\", \"²\"), (\"^3\", \"³\"), (\"^n\", \"ⁿ\")):'\nnew='    for k, v in ((\"^*\", \"*\"), (\"^4\", \"⁴\"), (\"^2\", \"²\"), (\"^3\", \"³\"), (\"^n\", \"ⁿ\")):'\nassert old in s\ns=s.replace(old,new)\nio.open(p,\"w\",encoding=\"utf-8\").write(s)\nprint(\"ok\")\nPY\npython tools/make_docx.py 2>&1 | tail -1\npython - <<'EOF'\nimport os, pymupdf\ndoc = pymupdf.open(os.path.join(os.environ[\"TEMP\"], \"REPORT …（省略 176 字符）
+```
+
+<details><summary>📤 工具返回（184 字符）</summary>
+
+```
+ok
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 457 KB; 21 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+k^* ����ҳ: ��
+pages: 21
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && rm -f v2p.png && python tools/check.py 2>&1 | tail -3 && python tools/fullcheck.py 2>&1 | tail -8\nbash tools/update_chatlog.sh 2>&1 | tail -2\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"全文体检：修文件树表号、k* 渲染、清理正文里的版本自指\"\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git ls-remote --heads origin 2>/dev/null | cu …（省略 31 字符）
 ```
