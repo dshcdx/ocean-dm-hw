@@ -29,6 +29,7 @@
 | 18 | 重新读一遍要求，有没有遗漏 |  |
 | 19 | 没找到改名字的地方 |  |
 | 20 | 不用加英文摘要，是研究生课程报告 |  |
+| 21 | 名字改完了，除了§11 那段留白，其他还有没有遗漏错误，仔细检查一下 |  |
 
 > 第 1 轮起为安装技能、配置 GitHub 等环境准备；第 14 轮起为课程大作业本身的讨论。
 
@@ -11367,4 +11368,1060 @@ Let me run the chatlog update + commit + push, then answer briefly.
 
 ```json
 {"command": "cd /d/work/default-workspace/ocean-dm-hw && bash tools/update_chatlog.sh 2>&1 | tail -1\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"更新对话记录\" 2>&1 | tail -1\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1; echo pushed", "timeoutMs": 600000}
+```
+
+<details><summary>📤 工具返回（37 字符）</summary>
+
+```
+已更新 chatlog/AI_CONVERSATION.md
+pushed
+```
+
+</details>
+
+### 🤖 助手 · 20:17:27
+
+好的，英文摘要不加，报告保持中文单语。
+
+关于格式依据，说明一下：**浙大没有一个全校统一的「研究生课程报告」格式**。我查到的是三种：
+
+- 本科生毕业论文编写规则（校级成文，我用的就是这套）
+- 研究生**学位论文**编写规则（对应毕业论文，页边距、封面颜色都有额外规定，课程报告用不上）
+- 各学院自己的研究生论文模板（比如地球科学学院那份：标题小二宋体、摘要小四楷体、正文小四宋体固定行距 20 磅）
+
+研究生课程报告一般由任课老师自己定，很多老师只看内容、不管排版。我用的这套是校级唯一成文的规范，排版上不会被挑刺，**不用再改**。
+
+如果张帆老师发过课程模板，或者课程群里有格式要求，你发我一份，我按它重排——那种情况才是必须对的。
+
+顺带说明：本轮没有改动报告内容，只按你「每次对话都要更新」的要求重新导了一份对话记录并推上去了（现在 19 轮）。
+
+**还有两件事没定**：
+
+1. **仓库改名**（`servo-valve` → `ocean-dm-hw`）：你说没找到地方，我上一条给的地址是 `https://github.com/dshcdx/servo-valve/settings`，改名框在页面最上面第一块。要是还找不到，或者你觉得没必要，就保持现状——不影响评分，旧链接也不会失效。
+2. **§11 那段留白**（你选这个题的真实动机）：现在报告里明确写着“这部分留白，等我改完草稿再补”。老师从聊天记录里能看到我们讨论了什么，但你的动机只有你能写。写完发我，我重新生成并推一次。
+
+## 第 21 轮
+
+### 👤 用户 · 20:18:38
+名字改完了，除了§11 那段留白，其他还有没有遗漏错误，仔细检查一下
+
+<details><summary>🤖 助手推理过程</summary>
+
+User renamed the repo. New name presumably `ocean-dm-hw` under DSHCDX. I should:
+1. Verify the new repo URL works (curl).
+2. Update the remote + all links (report md, make_docx.py, README, chatlog header?) to the new URL.
+3. Rebuild docx, regenerate chatlog, commit, push to new remote.
+4. Then carefully check the whole report for remaining errors/omissions — this is the main ask: "仔细检查一下".
+
+Let me first verify the repo name. Try https://github.com/dshcdx/ocean-dm-hw.
+
+Then do a thorough audit. What to check:
+- Numbers consistency between report text and results CSVs (I've checked most; re-verify a few: 8.781, 8.242, 8.252, 0.188, 0.015, 0.320, tokens 4862/3764, writes 100.75, 12.12, abandon rates, P(any dup) 26.6/15.5, N=1 numbers 0.032/0.035).
+- 图题编号 & 引用：图1..图5 all referenced? 表1..表6 referenced?
+- 参考文献 [1]-[5] all cited, and citation format.
+- 摘要 numbers match body.
+- 目录 entries count.
+- 复现说明 paths correct (sim/, results/, figures/).
+- README table matches main_summary.csv.
+- chatlog: 19-20 turns now; includes everything?
+- Typos/中文标点: "的的", double spaces, ASCII quotes issue (mentioned earlier as cosmetic - still there?). I said I'd leave ASCII quotes; in Word they render as "" pairs. Could fix now: replace ASCII double quotes with Chinese “ ” properly? Hard to pair correctly automatically. Actually the md has many `"..."` ASCII quotes; converting pairs to “” is doable with a regex pairing algorithm. That would improve typography. Worth doing? The user asked for a careful check of errors — typographic quotes are a real polish item. Let me try a safer approach: leave quotes but check for doubled-quote artifacts like `""` (two adjacent). Hmm.
+
+Actually earlier I noted the issue: `"错在哪""怎么补"` renders as `"错在哪""怎么补"` in Word, which looks odd but is readable. A proper conversion to “ ” would look better. I can implement a pairing regex: replace `"([^"\n]*)"` with `“\1”` iteratively. Risk: unbalanced quotes → leftover. Acceptable.
+
+Let me do it carefully: only replace pairs within a line.
+
+- Also check for "的的", "，，", "。。", double spaces.
+
+- Check the 表 6 numbers against sweep_cost_ratio.csv (I wrote "S2 胜 / S4 胜" pattern). Verify at 0.25×、0.5×、1×、2×、4× — but my table in report shows 4 columns (0.5×,1×,2×,4×) and text says "0.25×、0.5×、1×、2×、4× 五档". Table has 4 columns — mismatch! The text says five levels but table shows four. That's an inconsistency to fix (either add 0.25× column or change text).
+
+Let me check the actual report section 6.2 text/table.
+
+- Also §5.1 "见表 3" reference: "三个读数值得单独拎出来（见上表 3）" — the table is above that sentence? Fine.
+
+- Check figure 3 caption/labels.
+
+- Check that 摘要 says "−97.7%" consistent with body.
+
+- Check 参考文献 [2] Reactive Agents URL ok; [3] Temporal URL — I invented docs.temporal.io/workflow-execution; maybe wrong URL. Should verify. If unverifiable, point to a general docs URL. Let me check quickly via curl? docs.temporal.io likely reachable.
+
+- Check 图 4 (b) 放弃率 claim "9.5% vs 5.1%" — from CSV S0 0.095, S2 0.0505 ✓.
+
+- Check "S0 在 p=30% 时平均烧掉 4862 token，比 S2 多 29%" ✓.
+
+- §7.3 says 预印本 reports 8 个百分点漏发 ✓.
+
+- §8.2 decision rule mentions 28/p ✓.
+
+Let me now: 
+1) verify repo + update links
+2) run automated consistency checks (parse CSVs, grep numbers)
+3) fix issues found
+4) rebuild + push
+
+Let me start.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "for u in https://github.com/dshcdx/ocean-dm-hw https://github.com/DSHCDX/ocean-dm-hw; do printf \"%-45s \" \"$u\"; curl -sI -o /dev/null -w \"%{http_code} %{redirect_url}\\n\" --max-time 20 \"$u\"; done\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ncd /d/work/default-workspace/ocean-dm-hw && GIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git ls-remote --heads https://github.com/dshcdx/ocean-dm-hw.git 2>&1 | head -2", "timeoutMs": 180000}
+```
+
+<details><summary>📤 工具返回（158 字符）</summary>
+
+```
+https://github.com/dshcdx/ocean-dm-hw         200 
+https://github.com/DSHCDX/ocean-dm-hw         200 
+e80e042ac3bf890d67b9685db5287fd42d413fd0	refs/heads/main
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+New repo is live: github.com/dshcdx/ocean-dm-hw, head e80e042 (the user's rename probably kept history; our last commit was 3d96dcf... e80e042 is different — maybe the rename created a commit? No. Let me not worry; maybe GitHub shows latest commit hash of main which is different because... hmm, our last push was "更新对话记录" — hash unknown. e80e042 could be that commit.
+
+Now update links everywhere:
+- report/REPORT.md: https://github.com/DSHCDX/servo-valve → https://github.com/DSHCDX/ocean-dm-hw
+- tools/make_docx.py: same
+- README.md: mentions? Let me grep.
+- chatlog header? It mentions session only.
+- git remote.
+
+Then rebuild docx, regenerate chatlog, commit, push.
+
+But first, do the audit so I fix everything in one rebuild.
+
+Let me run a set of checks:
+1. grep all URLs for servo-valve.
+2. Check §6.2 table vs text (five levels vs four columns).
+3. Numbers spot-check vs CSVs via a script.
+4. Check ASCII quote pairs count.
+5. Check 图/表 references.
+6. Verify Temporal URL.
+
+Let me do 1,2,5 quickly with grep, and 3 with a python script, plus check Temporal URL with curl.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && echo \"== 旧仓库链接残留 ==\"; grep -rn \"servo-valve\" --include=\"*.md\" --include=\"*.py\" --include=\"*.sh\" . | grep -v \"^./chatlog\" | cut -c1-120\necho; echo \"== 图引用 ==\"; for i in 1 2 3 4 5; do printf \"图%d: 正文提及 %s 次\\n\" $i \"$(grep -o \"图 *$i[^0-9]\" report/REPORT.md | wc -l)\"; done\necho \"== 表引用 ==\"; for i in 1 2 3 4 5 6; do printf \"表%d: %s\\n\" $i \"$(grep -o \"表 *$i[^0-9]\" report/REPORT.md | wc -l)\"; done\necho; echo \"== 6.2 节：文字说几档 ==\"; sed -n '/### 6.2/,/### 6.3/p' report/REPORT.md | head -20\necho \"== Temporal 文档地址 = …（省略 130 字符）
+```
+
+<details><summary>📤 工具返回（1075 字符）</summary>
+
+```
+== 旧仓库链接残留 ==
+./report/REPORT.md:17:**代码与完整 AI 对话记录**：https://github.com/DSHCDX/servo-valve
+./tools/make_docx.py:192:    cn(p.add_run("代码与完整 AI 对话记录：https://github.com/DSHCDX/servo-valve"), "�
+./tools/make_docx.py:307:    md = re.sub(r"<REPO_URL>", "https://github.com/DSHCDX/servo-valve", md)
+
+== 图引用 ==
+图1: 正文提及 2 次
+图2: 正文提及 1 次
+图3: 正文提及 1 次
+图4: 正文提及 1 次
+图5: 正文提及 1 次
+== 表引用 ==
+表1: 2
+表2: 2
+表3: 2
+表4: 1
+表5: 1
+表6: 1
+
+== 6.2 节：文字说几档 ==
+### 6.2 门槛两侧谁更优：20 组代价比扫描
+
+![图5 采用账本的门槛](../figures/fig5_threshold.png)
+
+**表 6** 门槛两侧的胜者（α/β 取临界值的 0.25/0.5/1/2/4 倍）
+
+对每个 $(N, p)$ 组合，在临界值 $\alpha/\beta = 4(N+6)/(pN)$ 的 0.25×、0.5×、1×、2×、4× 五档上分别计算 S2 与 S4 的总代价 $C$，观察胜者：
+
+| N | p | 临界 $\alpha/\beta$ | 0.5×临界 | 1×临界 | 2×临界 | 4×临界 |
+|---|---|---|---|---|---|---|
+| 10 | 0.30 | 21.33 | S2 胜 | **S4 胜** | S4 胜 | S4 胜 |
+| 10 | 0.15 | 42.67 | S2 胜 | **S4 胜** | S4 胜 | S4 胜 |
+| 50 | 0.30 | 14.93 | S2 胜 | **S4 胜** | S4 胜 | S4 胜 |
+| 50 | 0.15 | 29.87 | S2 胜 | **S4 胜** | S4 胜 | S4 胜 |
+
+**四个组合、20 个取值点，胜者翻转的位置全部落在预测的临界值上**，没有一例提前或滞后。这条判据从经验规律升级成了一个可代入的工程不等式。
+
+### 6.3 代入真实量级
+== Temporal 文档地址 ==
+200
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Findings:
+1. Old repo links in 3 places → replace with ocean-dm-hw.
+2. 图/表 references: all ≥1. OK.
+3. §6.2 inconsistency: table has 4 columns (0.5×,1×,2×,4×) but text says 五档 including 0.25×. Also says "20 个取值点" — 4 combos × 5 levels = 20 points, but table shows 4 combos × 4 levels = 16 cells. Mismatch.
+   Fix: either add the 0.25× column (data exists in sweep_cost_ratio.csv — yes, 5 ratios per combo) or change text to 四档/16 点.
+   Better: add 0.25× column to the table to match "20 个取值点" and the sweep data. Data: at 0.25×critical → S2 wins presumably. Let me check sweep CSV to fill accurately.
+4. Temporal URL 200 ✓.
+
+Let me check sweep CSV values, then decide.
+
+Also do a numbers audit against CSVs programmatically.
+
+Let me read sweep_cost_ratio.csv.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && cat results/sweep_cost_ratio.csv"}
+```
+
+<details><summary>📤 工具返回（790 字符）</summary>
+
+```
+n_units,p_crash,alpha_beta,critical,C_S2,C_S4,winner
+10,0.15,10.667,42.667,7.42,21.1,S2
+10,0.15,21.333,42.667,14.65,21.86,S2
+10,0.15,42.667,42.667,29.12,23.4,S4
+10,0.15,85.333,42.667,58.05,26.47,S4
+10,0.15,170.667,42.667,115.9,32.62,S4
+10,0.3,5.333,21.333,7.28,21.24,S2
+10,0.3,10.667,21.333,14.2,21.88,S2
+10,0.3,21.333,21.333,28.02,23.17,S4
+10,0.3,42.667,21.333,55.67,25.74,S4
+10,0.3,85.333,21.333,110.96,30.89,S4
+50,0.15,7.467,29.867,29.31,101.01,S2
+50,0.15,14.933,29.867,58.43,101.67,S2
+50,0.15,29.867,29.867,116.68,102.98,S4
+50,0.15,59.733,29.867,233.18,105.61,S4
+50,0.15,119.467,29.867,466.18,110.87,S4
+50,0.3,3.733,14.933,33.91,101.43,S2
+50,0.3,7.467,14.933,67.4,102.13,S2
+50,0.3,14.933,14.933,134.4,103.53,S4
+50,0.3,29.867,14.933,268.39,106.34,S4
+50,0.3,59.733,14.933,536.37,111.95,S4
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Data confirms: at 0.25× (quarter of critical) → S2 wins; at 0.5× → S2 wins; at 1× → S4 wins; 2×, 4× → S4.
+
+So table should have 5 columns: 0.25×, 0.5×, 1×, 2×, 4× — all with S2 胜, S2 胜, S4 胜, S4 胜, S4 胜. Wait at 0.5× S2 wins ✓; at 0.25× S2 wins ✓.
+
+Hmm, but that makes the table uniform: S2 wins below critical, S4 wins at/above. Fine — that's the point.
+
+Also "20 个取值点" = 4 combos × 5 ratios = 20 ✓ consistent with 5 columns.
+
+Let me fix the table to 5 ratio columns.
+
+Now the numeric audit: verify key numbers in report against CSVs. Let me write a script that extracts specific claims and compares.
+
+Claims to verify:
+- 8.781 (S1 dup N50 p.3)
+- 8.242 (S2)
+- 8.252 (S3)
+- 0.188 (S4)
+- 0.397/0.357/0.320/0.315/0.015 (lost)
+- 9.491 (S0 dup)
+- 4862/4215/3764/3756/3798 tokens
+- 0.40/12.12/100.75 writes
+- 9.5%/5.9%/5.1%/6.1%/1.0% abandon
+- 0.266/0.155 P(any dup)
+- N=1 p=0.3: 0.032/0.035, writes 0.36/2.43
+- 6.2% reduction: (8.781-8.242)/8.781 = 6.14% ✓
+- 97.7%: (8.242-0.188)/8.242 = 97.72% ✓
+- 95.3% lost: (0.320-0.015)/0.320 = 95.3% ✓
+- 252×: 100.75/0.40 = 251.9 ✓
+- +29% token: (4862-3764)/3764 = 29.2% ✓
+- analytic table: 0.043/0.034, 0.516/0.578, 3.415/3.617, 6.830/8.739 ✓ from earlier output
+- 临界值: 21.33/42.67/14.93/29.87 ✓
+
+Let me write a verification script that pulls numbers from main_summary.csv and checks that each claimed number appears (approximately) in the report text. Simpler: print the exact CSV rows and eyeball vs report table. I already did earlier. The risk is transcription. Let me do a targeted diff: extract 表3 from md and compare to CSV programmatically.
+
+Let me write a quick script: parse the md table rows for 表3 and compare each numeric cell to CSV values with tolerance.
+
+Also check 摘要 numbers vs body.
+
+Let me do that, plus fix links and 表6.
+
+Other checks to run:
+- ASCII quotes count and whether any doubled `""` sequences exist.
+- "的的" etc.
+- README numbers match.
+- chatlog size/turns.
+
+Let me write one audit script that prints findings, then fix.
+
+</details>
+
+**🔧 调用工具** `write`
+
+```json
+{"content": "# -*- coding: utf-8 -*-\n\"\"\"一次性核查：报告正文数字 vs 实验数据 CSV。\"\"\"\nimport csv\nimport io\nimport re\n\nROOT = \".\"\nmd = io.open(f\"{ROOT}/report/REPORT.md\", encoding=\"utf-8\").read()\n\nrows = list(csv.DictReader(io.open(f\"{ROOT}/results/main_summary.csv\", encoding=\"utf-8\")))\nidx = {(r[\"policy\"], int(r[\"n_units\"]), float(r[\"p_crash\"])): r for r in rows}\n\n\ndef show(pol, n, p, keys):\n    r = idx[(pol, n, p)]\n    return {k: r[k] for k in keys}\n\n\nprint(\"=== 表 3 引用的那一组（S*, 50, 0.30）===\")\nfor pol in (\"S0\", \"S1\", \"S2\", \"S3\", \"S4\"):\n    print(\" \", pol,  …（省略 1846 字符）
+```
+
+<details><summary>📤 工具返回（118 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\tools\_audit.py</path>
+<type>file</type>
+<content>
+Created file
+</content>
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python tools/_audit.py", "timeoutMs": 180000}
+```
+
+<details><summary>📤 工具返回（1974 字符）</summary>
+
+```
+=== �� 3 ���õ���һ�飨S*, 50, 0.30��===
+  S0 {'dup_mean': '9.491', 'lost_mean': '0.397', 'tokens_mean': '4862.4', 'writes_mean': '0', 'abandon_rate': '0.095'}
+  S1 {'dup_mean': '8.781', 'lost_mean': '0.357', 'tokens_mean': '4215.4', 'writes_mean': '0.4', 'abandon_rate': '0.0585'}
+  S2 {'dup_mean': '8.242', 'lost_mean': '0.32', 'tokens_mean': '3764.3', 'writes_mean': '0.4', 'abandon_rate': '0.0505'}
+  S3 {'dup_mean': '8.252', 'lost_mean': '0.315', 'tokens_mean': '3756.1', 'writes_mean': '12.12', 'abandon_rate': '0.0605'}
+  S4 {'dup_mean': '0.188', 'lost_mean': '0.015', 'tokens_mean': '3798.1', 'writes_mean': '100.75', 'abandon_rate': '0.01'}
+
+=== �� 4��N=1, p=0.30��===
+  S2 {'dup_mean': '0.032', 'lost_mean': '0.002', 'writes_mean': '0.36'}
+  S4 {'dup_mean': '0.035', 'lost_mean': '0.001', 'writes_mean': '2.43'}
+
+=== 5.2 �ᵽ�� P(dup) (50, 0.30) ===
+  S2 0.266
+  S4 0.155
+
+=== 6.1 ���� vs ģ�� ===
+  {'n_units': '1', 'p_crash': '0.05', 'analytic_dup': '0.007', 'sim_dup': '0.005'}
+  {'n_units': '1', 'p_crash': '0.15', 'analytic_dup': '0.021', 'sim_dup': '0.013'}
+  {'n_units': '1', 'p_crash': '0.3', 'analytic_dup': '0.043', 'sim_dup': '0.034'}
+  {'n_units': '10', 'p_crash': '0.05', 'analytic_dup': '0.172', 'sim_dup': '0.179'}
+  {'n_units': '10', 'p_crash': '0.15', 'analytic_dup': '0.516', 'sim_dup': '0.578'}
+  {'n_units': '10', 'p_crash': '0.3', 'analytic_dup': '1.031', 'sim_dup': '1.4'}
+  {'n_units': '50', 'p_crash': '0.05', 'analytic_dup': '1.138', 'sim_dup': '1.36'}
+  {'n_units': '50', 'p_crash': '0.15', 'analytic_dup': '3.415', 'sim_dup': '3.617'}
+  {'n_units': '50', 'p_crash': '0.3', 'analytic_dup': '6.83', 'sim_dup': '8.739'}
+
+=== �����ٷֱ� ===
+  ��������ּ�����: 6.1 %������ 6.2%��
+  S4 ��� S2 ����: 97.7 %������ 97.7%��
+  S4 ©������: 95.3 %������ 95.3%��
+  д�Ŵ���: 251.9 ������ 252 ����
+  token ����: 29.2 %������ 29%��
+
+=== ������ ASCII ˫���ų��ִ��� === 154
+=== ������������ "" ���� === 2
+=== �����ظ���� ===
+  '�ĵ�': 0
+  '����': 0
+  '����': 0
+  '  ': 64
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Audit results:
+- All numbers match CSVs ✓.
+- 6.1% vs report's 6.2%: report says "只把重复减少 6.2%" — actual (8.781-8.242)/8.781 = 6.14% → rounds to 6.1%. Report says 6.2%. **Off by 0.1** — should be 6.1%. Wait: maybe I computed from different values: 8.781→8.242 is 6.14%. So "6.2%" is wrong; should be 6.1%. Hmm, but maybe I used 8.78/8.24: (8.78-8.24)/8.78 = 6.15%. Still 6.1%.
+
+Let me fix to 6.1% everywhere (abstract, §5.1, §11 maybe).
+
+Actually careful: 摘要 says "只把重复减少 6.2%（N=50, p=0.30）", §5.1 says "步级存档相对轮级只减少 6.2%", and "8.781 → 8.242" text. Change 6.2% → 6.1%.
+
+- 154 ASCII quotes, 2 occurrences of `""` — need fixing to Chinese quotes ideally.
+- 64 double spaces (mostly intentional in tables/code).
+
+Other checks still to do:
+- 表6 columns (0.25× missing).
+- Old repo links.
+- README numbers.
+- chatlog turns.
+- 图4 claim "9.5% vs 5.1%" ✓ from CSV (0.095, 0.0505 → 5.1%) ✓.
+- §5.3 "62.9 tick → 75.3 tick（+20%）": need ticks from CSV: S2 ticks 62.93, S4 75.32 → +19.7% ✓ (report says +20%: "模拟耗时从 62.9 tick 涨到 75.3 tick（+20%）") ✓.
+- §5.4 "S0 4862 token 比 S2 多 29%" ✓.
+
+Also check: 摘要 says "漏发从 0.320 降到 0.015" ✓; "写入放大 250 倍、模拟耗时 +15%" — §5.3 says +20%. Inconsistency! 摘要: "代价是写入放大 250 倍、模拟耗时 +15%"; §5.3: +20%. Actual = 19.7% → 20%. Fix 摘要 to +20%.
+
+Let me grep for "+15%" and "6.2%".
+
+Also 表3 caption says "2000 次运行均值" ✓.
+
+Another: §5.1 text says "S0 裸跑 9.491" and "8.781 → 8.242"... fine.
+
+Also: 摘要 "重复副作用从 8.24 降到 0.19 条/次运行（−97.7%）" ✓.
+
+Now let me also verify README table numbers: it lists 9.491/8.781/8.242/8.252/0.188 and lost 0.397/0.357/0.320/0.315/0.015 and writes 0/0.40/0.40/12.12/100.75 — matches.
+
+Let me now fix:
+1. Links → ocean-dm-hw (3 places) + git remote.
+2. 6.2% → 6.1% (abstract + §5.1 + §11? check).
+3. 摘要 +15% → +20%.
+4. 表6 add 0.25× column.
+5. Convert ASCII quotes to Chinese “ ” pairwise (154 quotes = 77 pairs; risky but let me do a careful pairing per line).
+
+For quotes: implement regex `"([^"\n]{0,200})"` → “\1” repeatedly per line. Any leftover single quote stays. Let me count after.
+
+Let me write the fix script.
+
+</details>
+
+**🔧 调用工具** `write`
+
+```json
+{"content": "# -*- coding: utf-8 -*-\n\"\"\"修正核查发现的问题：链接、百分比、表 6 列、中文引号。\"\"\"\nimport io\nimport re\n\nP = \"report/REPORT.md\"\ns = io.open(P, encoding=\"utf-8\").read()\n\n# 1) 仓库改名\ns = s.replace(\"https://github.com/DSHCDX/servo-valve\", \"https://github.com/DSHCDX/ocean-dm-hw\")\n\n# 2) 6.2% → 6.1%（按 CSV 复算为 6.14%）\ns = s.replace(\"只把重复减少 6.2%\", \"只把重复减少 6.1%\")\ns = s.replace(\"只减少 6.2%\", \"只减少 6.1%\")\n\n# 3) 摘要里的耗时增幅与 §5.3 统一（实测 +19.7%）\ns = s.replace(\"代价是写入放大 250 倍、模拟耗时 +15%。\", \"代价是写入放大 250 倍、模拟耗时 +20%。\")\n\n# 4) 表 6 补齐 0.25× 这一列（数据来自 results/sweep_cost_ratio.csv）\nold_table =  …（省略 1476 字符）
+```
+
+<details><summary>📤 工具返回（116 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\tools\_fix.py</path>
+<type>file</type>
+<content>
+Created file
+</content>
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python tools/_fix.py && rm -f tools/_fix.py tools/_audit.py && grep -n \"6.1%\\|ocean-dm-hw\\|+20%\" report/REPORT.md | head -8", "timeoutMs": 180000}
+```
+
+<details><summary>📤 工具返回（802 字符）</summary>
+
+```
+ʣ�� ASCII ����: 16 | 6.1% ����: 3 | ����: 2
+9:1. **证伪**：在扇出场景下，步级存档相对轮级存档只把重复减少 6.1%（N=50, p=0.30），几乎等于没做；工业界标准的「两相调用日志」相对步级存档**没有任何改善**（8.25 vs 8.24 条/次运行），却付出 30 倍的写入代价。
+10:2. **提出**「扇出效应账本」（fan-out effect ledger）：把幂等键从“每次调用一个”下沉到“每个子效应一个”，配“发前意向、发后确认”的逐子效应记账。重复副作用从 8.24 降到 0.19 条/次运行（**−97.7%**），漏发从 0.320 降到 0.015 条/次运行，代价是写入放大 250 倍、模拟耗时 +20%。
+17:**代码与完整 AI 对话记录**：https://github.com/DSHCDX/ocean-dm-hw
+222:| S3 步级+两相日志 | 8.252 | 0.315 | 3756 | 12.12 | 6.1% |
+227:**① 步级存档相对轮级只减少 6.1%。** 8.781 → 8.242。文献里“step 级安全”的结论在这里几乎不成立。原因很直接：重复全部来自扇出内部的部分完成，而轮级和步级的差别只是“重跑一整轮”还是“重跑一整步”——**只要那一步包含整个扇出，重跑的范围就一样是 N 条**。
+243:$N=50$ 时账本要写 100.75 次（每个子效应 2 次：意向 + 确认），是步级存档 0.40 次的 **252 倍**。模拟耗时从 62.9 tick 涨到 75.3 tick（+20%），但换来的是放弃率从 5.1% 降到 1.0%——**账本把“重跑”换成了“记账”，总时间反而更省**，因为重跑一次要烧掉一整段扇出。
+361:ocean-dm-hw/
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Good. 16 ASCII quotes remain — likely in code blocks (skipped) and unbalanced cases. Let me check where they are.
+
+Also note §5.1 heading says "**① 步级存档相对轮级只减少 6.1%**" but the table row says "6.1%" for S3 abandon rate — coincidence.
+
+Let me look at remaining 16 quotes. They may be inside code fences (复现说明 tree, or 决策规则 block) — acceptable.
+
+Then rebuild docx, verify, update chatlog, commit, push to new remote.
+
+Also need to update tools/make_docx.py links (2 places) and git remote.
+
+Let me check remaining quotes quickly, then do the rebuild.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && grep -n '\"' report/REPORT.md | cut -c1-100 | head -20"}
+```
+
+<details><summary>📤 工具返回（230 字符）</summary>
+
+```
+77:| 存档的单位是什么 | 以 LangGraph 为代表：**每个图节点**存一次，节点是�
+178:| A1 | 每次"尝试"以概率 $p$ 崩溃一次；崩溃点在该次剩余工作单元上均匀�
+179:| A2 | **接收端不去重**：短信网关、群机器人、值班手机都不支持幂等键�
+182:| A5 | 预警有 deadline，模拟时间超限即放弃，未送达计为漏发 | 把"重放要�
+195:| **S2** | 步级 | 无 | 文献认定的"安全默认" |
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+The remaining ASCII quotes are inside table rows (my fixer skipped lines starting with `|`). Need to also fix quotes within table cells — safe since cells are separated by `|`; quoting per cell.
+
+Let me run a second pass on table rows: for each row, split by `|`, fix quotes per cell, rejoin.
+
+Then rebuild docx.
+
+Also update make_docx.py links + git remote.
+
+Let me do all now.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io, re\nP = \"report/REPORT.md\"\ns = io.open(P, encoding=\"utf-8\").read()\n\ndef fix_cell(c):\n    prev = None\n    while prev != c:\n        prev = c\n        c = re.sub(r'\"([^\"\\n]{1,300})\"', r\"\\u201c\\1\\u201d\", c, count=1)\n    return c\n\nout = []\nfor line in s.splitlines():\n    if line.lstrip().startswith(\"|\") and '\"' in line:\n        parts = line.split(\"|\")\n        parts = [fix_cell(p) for p in parts]\n        line = \"|\".join(parts)\n    out.append(line)\ns = \"\\n\".join(out)\nio.open(P, …（省略 492 字符）
+```
+
+<details><summary>📤 工具返回（717 字符）</summary>
+
+```
+make_docx �����ѻ�
+0
+[stderr]
+Traceback (most recent call last):
+  File "<stdin>", line 16, in <module>
+  File "<stdin>", line 9, in fix_cell
+  File "D:\anaconda3\Lib\re\__init__.py", line 208, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "D:\anaconda3\Lib\re\__init__.py", line 377, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "D:\anaconda3\Lib\re\_parser.py", line 1061, in parse_template
+    raise s.error('bad escape %s' % this, len(this)) from None
+re.PatternError: bad escape \u at position 0
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+The `\u201c` in the replacement string isn't interpreted by re.sub — need to use actual characters. Let me redo with literal “ ” characters.
+
+Let me write a small file with write tool to avoid shell quoting issues.
+
+</details>
+
+**🔧 调用工具** `write`
+
+```json
+{"content": "# -*- coding: utf-8 -*-\n\"\"\"表格单元格内的 ASCII 引号转中文引号。\"\"\"\nimport io\nimport re\n\nP = \"report/REPORT.md\"\ns = io.open(P, encoding=\"utf-8\").read()\n\nLQ, RQ = \"\\u201c\", \"\\u201d\"\n\n\ndef fix_cell(c: str) -> str:\n    prev = None\n    while prev != c:\n        prev = c\n        c = re.sub(r'\"([^\"\\n]{1,300})\"', lambda m: LQ + m.group(1) + RQ, c, count=1)\n    return c\n\n\nout = []\nfor line in s.splitlines():\n    if line.lstrip().startswith(\"|\") and '\"' in line:\n        line = \"|\".join(fix_cell(p) for p in line.split(\"|\"))\n    out.append(line)\n\ns = \"\\n …（省略 178 字符）
+```
+
+<details><summary>📤 工具返回（117 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\tools\_fixq.py</path>
+<type>file</type>
+<content>
+Created file
+</content>
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python tools/_fixq.py && rm -f tools/_fixq.py && python tools/make_docx.py 2>&1 | tail -1", "timeoutMs": 900000}
+```
+
+<details><summary>📤 工具返回（175 字符）</summary>
+
+```
+ʣ�� ASCII ����: 0
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 660 KB; 21 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+All ASCII quotes fixed; docx rebuilt (21 pages).
+
+Now:
+1. Update git remote to new repo name.
+2. Verify the docx renders fine (check a page with quotes + 表6).
+3. Regenerate chatlog (it embeds the assignment text; fine).
+4. Commit, push to new remote.
+5. Also update README if it mentions repo? It doesn't.
+
+Let me check 表6 page and a quotes page visually — quick render of the 6.2 page.
+
+Then push.
+
+Let me find the page with 表 6.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nimport os, pymupdf\ndoc = pymupdf.open(os.path.join(os.environ[\"TEMP\"], \"REPORT_final.pdf\"))\nfor i, pg in enumerate(doc):\n    if \"门槛两侧的胜者\" in pg.get_text():\n        pg.get_pixmap(dpi=95).save(os.path.join(os.environ[\"TEMP\"], \"t6.png\")); print(\"表6 在 p\", i+1); break\nEOF\ncp \"$TEMP/t6.png\" /d/work/default-workspace/ocean-dm-hw/t6.png && echo ok", "timeoutMs": 180000}
+```
+
+<details><summary>📤 工具返回（13 字符）</summary>
+
+```
+��6 �� p 5
+ok
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\t6.png"}
+```
+
+<details><summary>📤 工具返回（140 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\t6.png</path>
+<type>image</type>
+<content>
+image/png image, 786x1111 px, 153289 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+The search matched "门槛两侧的胜者" in the TOC page? No — it matched page 5 which is the 摘要 (page 5 in PDF = body page 1). Hmm, the text "门槛两侧的胜者" appears in 摘要? Yes: "门槛两侧的胜者与预测完全一致。" So my search hit 摘要.
+
+Anyway, 摘要 renders well with Chinese quotes now.
+
+Let me find 表6 by searching "0.25×" or "6.2 门槛两侧谁更优". Let me search for "临界" + "S2 胜".
+
+Actually simpler: search for "表 6" literal.
+
+Let me just render the page containing "S2 胜".
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nimport os, pymupdf\ndoc = pymupdf.open(os.path.join(os.environ[\"TEMP\"], \"REPORT_final.pdf\"))\nfor i, pg in enumerate(doc):\n    t = pg.get_text()\n    if \"S2 胜\" in t:\n        pg.get_pixmap(dpi=95).save(os.path.join(os.environ[\"TEMP\"], \"t6b.png\")); print(\"p\", i+1); break\nEOF\nrm -f /d/work/default-workspace/ocean-dm-hw/t6.png; cp \"$TEMP/t6b.png\" /d/work/default-workspace/ocean-dm-hw/t6b.png", "timeoutMs": 180000}
+```
+
+<details><summary>📤 工具返回（4 字符）</summary>
+
+```
+p 16
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\t6b.png"}
+```
+
+<details><summary>📤 工具返回（141 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\t6b.png</path>
+<type>image</type>
+<content>
+image/png image, 786x1111 px, 137663 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+表 6 now has 5 ratio columns and is consistent with "20 个取值点".
+
+Issues spotted on this page:
+1. 图 5 的图题重复了：图片本身有标题"图5 采用扇出账本的门槛..."（matplotlib title），下面又有 Word 图题"图 5 采用账本的门槛" → 双重图题。规范上只应有 Word 图题。需要把 matplotlib 内部的 suptitle 去掉？但那会让图本身没标题——标准做法是图内无标题，靠图注。
+   解决：修改 analyze.py 去掉图内 title，重跑图；或保留但改图注。最干净：去掉图内标题（图1-图5 的 suptitle/title），保留 Word 图题。
+   但重跑 analyze.py 会重新生成所有图（1 分钟），然后重做 docx。可行。
+   风险：图5 的副标题（α=... β=...）承载信息，去掉后信息丢失 → 移到图注里。
+   
+   Simpler alternative: keep matplotlib titles only for figures where Word caption is minimal, and change Word caption to not duplicate... but duplicate titles look unprofessional.
+
+   Decision: remove in-figure titles (suptitle/ax.set_title for fig5) and enrich Word captions. That's a moderate edit to analyze.py + REPORT.md captions + regenerate figures + docx. ~10 min. Worth it for "仔细检查".
+
+   Hmm, but figures 1-4 also have suptitles ("图1 扇出规模与崩溃率..." etc.) plus Word captions ("图1 扇出规模与崩溃率对重复副作用的影响（2000 次/格）"). Same duplication. So fix all 5.
+
+2. 6.3 公式显示为 "(α)/(β) ≈ 6×10^4 ≫ (4×56)/(0.15×50) = 29.9" — 可读但 LaTeX \approx 转换后是 "≈"，OK。不过 "6×10^4" 应该是 6×10⁴；可接受。
+
+3. 图5 内 x 轴标签 "扇出规模 N（目标单位数）" fine.
+
+Let me decide on scope: removing in-figure titles means editing analyze.py's 5 fig functions (remove suptitle/ax.set_title), regenerating figures, copying, rebuilding docx. Then Word captions must carry the info; current captions are decent, but 图5's caption "图5 采用账本的门槛" is thin — expand to include the α/β explanation.
+
+Also after removing a title line from figures, image height shrinks slightly; fine.
+
+This is worth doing — duplicate captions are an obvious "错误" a careful grader would notice.
+
+Let me also double-check other pages for issues: e.g., page 12 shows 表6 with 8 columns; fine.
+
+Plan:
+1. Edit analyze.py: remove `fig.suptitle`/`ax.set_title` calls for fig1-fig5.
+2. Re-run analyze.py (regenerates all figures + threshold CSV).
+3. Copy figures into repo.
+4. Expand Word captions in REPORT.md (图1-图5) to be self-contained (already fairly descriptive; check each).
+5. Rebuild docx, verify one figure page.
+6. Update chatlog, commit, push to new remote.
+
+Let me check current captions:
+- 图1: "图1 扇出规模与崩溃率对重复副作用的影响（2000 次/格）" ✓
+- 图2: "图2 重复发生的概率：步级存档 vs 扇出账本" — figure alt text? Let me check md captions.
+
+I'll do a grep for "![图" to see all captions.
+
+Then proceed.
+
+Actually — simpler and safer: keep in-figure titles but REMOVE the Word caption duplication? No: ZJU requires 图题. Better to remove in-figure titles.
+
+Let me implement.
+
+</details>
+
+### 🤖 助手 · 20:20:03
+
+这张图里发现一个明显问题：**图里已经有大标题，下面又生成了一遍 Word 图题，形成了双重标题**。规范做法是图内不放标题，标题统一交给图注。我会改掉。
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && grep -n '!\\[' report/REPORT.md | cut -c1-90\necho \"== analyze.py 里的标题 ==\"; grep -n \"suptitle\\|set_title\" sim/analyze.py"}
+```
+
+<details><summary>📤 工具返回（682 字符）</summary>
+
+```
+213:![图1 扇出规模与崩溃率对重复副作用的影响](../figures/fig1_duplicates
+235:![图2 重复发生的概率](../figures/fig2_p_any_dup.png)
+241:![图3 代价—收益：写入放大换重复削减](../figures/fig3_cost_benefit.png
+247:![图4 粗粒度存档的隐性代价](../figures/fig4_side_costs.png)
+283:![图5 采用账本的门槛](../figures/fig5_threshold.png)
+== analyze.py 里的标题 ==
+55:        ax.set_title(f"N = {n} 个目标单位")
+61:    fig.suptitle("图1  扇出规模与崩溃率对重复副作用的影响（2000 次/格）", y=1.02)
+82:    ax.set_title("图2  重复发生的概率：步级存档 vs 扇出账本")
+102:    ax.set_title("图3  N=50 时的代价—收益：写入放大换重复削减")
+119:    a1.set_title("(a) 重复烧掉的 LLM token")
+121:    a2.set_title("(b) 超时放弃率（放弃即漏发）")
+126:    fig.suptitle("图4  粗粒度存档的隐性代价（N=50）", y=1.03)
+176:    ax.set_title("图5  采用扇出账本的门槛：α/β 高于曲线即值得上账本\n"
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np = \"sim/analyze.py\"\ns = io.open(p, encoding=\"utf-8\").read()\n\n# 图内不再放大标题（图题统一交给 Word 图注），只保留必要的分面/子图标注\ns = s.replace('    fig.suptitle(\"图1  扇出规模与崩溃率对重复副作用的影响（2000 次/格）\", y=1.02)\\n', '')\ns = s.replace('    ax.set_title(\"图2  重复发生的概率：步级存档 vs 扇出账本\")\\n', '')\ns = s.replace('    ax.set_title(\"图3  N=50 时的代价—收益：写入放大换重复削减\")\\n', '')\ns = s.replace('    fig.suptitle(\"图4  粗粒度存档的隐性代价（N=50）\", y=1.03)\\n', '')\ns = s.replace('''    ax.set_title(\"图5  采用扇出账本的门槛：α/β 高于曲线即值得上账本\\\\n\"\n                 \"α=一 …（省略 352 字符）
+```
+
+<details><summary>📤 工具返回（264 字符）</summary>
+
+```
+���Ƴ�ͼ�ڱ���
+figures -> C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\ocean_dm_results\figures
+verify_analytic ->
+   N=1   p=0.05  ����=0.007  ģ��=0.005
+fig1_duplicates.png
+fig2_p_any_dup.png
+fig3_cost_benefit.png
+fig4_side_costs.png
+fig5_threshold.png
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Figures regenerated without in-figure titles. But note fig1's panel titles "N = 10 个目标单位" remain (good, those are subplot labels).
+
+Now enrich Word captions since in-figure titles are gone:
+- 图1: "图 1 扇出规模与崩溃率对重复副作用的影响（N=1/10/50，每格 2000 次运行）" — current caption is "图1 扇出规模与崩溃率对重复副作用的影响" (good, add 2000 次)
+- 图2: "图2 重复发生的概率" → "图 2 至少出现一条重复的运行占比：步级存档（S2）与扇出账本（S4）"
+- 图3: "图3 代价—收益：写入放大换重复削减" ✓ fine
+- 图4: "图4 粗粒度存档的隐性代价" → add (N=50)
+- 图5: "图5 采用账本的门槛" → add α/β 含义
+
+Let me update captions in REPORT.md, rebuild docx, verify a figure page, then chatlog+commit+push to new remote.
+
+Also need to update git remote to ocean-dm-hw.
+
+Let me do captions + rebuild.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np = \"report/REPORT.md\"\ns = io.open(p, encoding=\"utf-8\").read()\nrep = {\n \"![图1 扇出规模与崩溃率对重复副作用的影响](../figures/fig1_duplicates.png)\":\n \"![图 1　扇出规模与崩溃率对重复副作用的影响（N = 1 / 10 / 50，每格 2000 次运行）](../figures/fig1_duplicates.png)\",\n \"![图2 重复发生的概率](../figures/fig2_p_any_dup.png)\":\n \"![图 2　至少出现一条重复预警的运行占比：步级存档（S2）与扇出账本（S4）](../figures/fig2_p_any_dup.png)\",\n \"![图3 代价—收益：写入放大换重复削减](../figures/fig3_cost_benefit.png)\":\n \"![图 3　N = 50 时的代价—收益：写入放大换重复削减](../figures/fig3_cost_benefit.png)\",\n \"![图4 粗粒度存档的 …（省略 491 字符）
+```
+
+<details><summary>📤 工具返回（164 字符）</summary>
+
+```
+ͼע�Ѳ�ȫ
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 594 KB; 21 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nimport os, pymupdf\ndoc = pymupdf.open(os.path.join(os.environ[\"TEMP\"], \"REPORT_final.pdf\"))\nfor i, pg in enumerate(doc):\n    if \"图 5\" in pg.get_text() and \"门槛\" in pg.get_text():\n        pg.get_pixmap(dpi=95).save(os.path.join(os.environ[\"TEMP\"], \"f5.png\")); print(\"p\", i+1); break\nEOF\nrm -f /d/work/default-workspace/ocean-dm-hw/*.png; cp \"$TEMP/f5.png\" /d/work/default-workspace/ocean-dm-hw/f5.png", "timeoutMs": 180000}
+```
+
+<details><summary>📤 工具返回（4 字符）</summary>
+
+```
+p 16
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\f5.png"}
+```
+
+<details><summary>📤 工具返回（140 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\f5.png</path>
+<type>image</type>
+<content>
+image/png image, 786x1111 px, 137607 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Better: single caption now. But the y-axis label is very long and vertical: "临界代价比 α/β（α=一条重复预警的代价，β=一次写入的代价）" — it's cramped/rotated and hard to read. Better to shorten y-label to "临界代价比 α/β" and keep the explanation in the caption (which it now does).
+
+Let me revert ylabel to short version and rely on caption.
+
+Also 图5's legend is fine.
+
+Let me fix ylabel, regenerate fig5 only (rerun analyze is 1 min; or just patch and rerun).
+
+Then rebuild docx, chatlog, commit, push with new remote.
+
+Also check figures 1-4 for leftover issues? fig1 had panel titles (good). Let me spot-check fig3 or fig4 quickly? Maybe skip; they were fine before minus titles.
+
+Let me patch ylabel and rerun.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np = \"sim/analyze.py\"\ns = io.open(p, encoding=\"utf-8\").read()\ns = s.replace('ax.set_ylabel(\"临界代价比 α/β（α=一条重复预警的代价，β=一次写入的代价）\")',\n              'ax.set_ylabel(\"临界代价比 α / β\")')\nio.open(p, \"w\", encoding=\"utf-8\").write(s)\nprint(\"ok\")\nPY\npython sim/analyze.py >/dev/null 2>&1; cp \"$TEMP/ocean_dm_results/figures/\"*.png figures/\npython tools/make_docx.py 2>&1 | tail -1", "timeoutMs": 900000}
+```
+
+<details><summary>📤 工具返回（160 字符）</summary>
+
+```
+ok
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 584 KB; 21 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nimport os, pymupdf\ndoc = pymupdf.open(os.path.join(os.environ[\"TEMP\"], \"REPORT_final.pdf\"))\npg = doc[15]\npg.get_pixmap(dpi=95).save(os.path.join(os.environ[\"TEMP\"], \"f5b.png\"))\nprint(\"pages\", len(doc))\nEOF\nrm -f /d/work/default-workspace/ocean-dm-hw/*.png; cp \"$TEMP/f5b.png\" /d/work/default-workspace/ocean-dm-hw/f5b.png", "timeoutMs": 180000}
+```
+
+<details><summary>📤 工具返回（8 字符）</summary>
+
+```
+pages 21
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\f5b.png"}
+```
+
+<details><summary>📤 工具返回（141 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\f5b.png</path>
+<type>image</type>
+<content>
+image/png image, 786x1111 px, 132362 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Now clean: single caption, short axis label.
+
+Remaining minor: 6.3 公式 "(α)/(β) ≈ 6×10^4 ≫ (4×56)/(0.15×50) = 29.9" — renders acceptably but "10^4" as caret. Could render as "6×10⁴" by post-processing superscripts. Minor; could improve by mapping "10^4" → "10⁴" in latex_to_text. Cheap: add replacements for ^4, ^2. Let me add a small superscript map.
+
+Also "(α)/(β)" is ugly; original md: $\frac{\alpha}{\beta} \approx 6\times10^4 \gg \frac{4\times56}{0.15\times50} = 29.9$. Better render: "α/β ≈ 6×10⁴ ≫ 4×56/(0.15×50) = 29.9".
+
+Improve latex_to_text: handle \frac{\alpha}{\beta} → α/β (without parens when simple). Simple heuristic: if numerator contains only letters/greek, no parens.
+
+Let me patch:
+- `\\frac\{([^{}]*)\}\{([^{}]*)\}` → if both are single tokens (no spaces/operators), use f"{a}/{b}", else f"({a})/({b})".
+- superscript: replace 10^4 → 10⁴, 10^2 → 10².
+
+Then rebuild. This is the last polish; then commit+push.
+
+Also need to update git remote to new repo before push.
+
+Let me do it.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np = \"tools/make_docx.py\"\ns = io.open(p, encoding=\"utf-8\").read()\ns = s.replace('''    s = re.sub(r\"\\\\\\\\frac\\\\{([^{}]*)\\\\}\\\\{([^{}]*)\\\\}\", r\"(\\\\1)/(\\\\2)\", s)''',\n'''    def _frac(m):\n        a, b = m.group(1).strip(), m.group(2).strip()\n        simple = lambda t: re.fullmatch(r\"[A-Za-z\\\\u0370-\\\\u03ff0-9]+\", t) is not None\n        return f\"{a}/{b}\" if (simple(a) and simple(b)) else f\"({a})/({b})\"\n    s = re.sub(r\"\\\\\\\\frac\\\\{([^{}]*)\\\\}\\\\{([^{}]*)\\\\}\", _frac, …（省略 951 字符）
+```
+
+<details><summary>📤 工具返回（165 字符）</summary>
+
+```
+ok
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 584 KB; 21 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+p 16
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\f6.png"}
+```
+
+<details><summary>📤 工具返回（135 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\f6.png</path>
+<type>image</type>
+<content>
+image/png image, 788x96 px, 840 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+My clip rect was wrong (bottom of page). Let me just extract the text of that page to check the formula rendering instead of an image.
+
+Let me print the line containing 29.9 from the PDF text.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nimport os, pymupdf\ndoc = pymupdf.open(os.path.join(os.environ[\"TEMP\"], \"REPORT_final.pdf\"))\nfor pg in doc:\n    t = pg.get_text()\n    if \"29.9\" in t:\n        for line in t.splitlines():\n            if \"29.9\" in line or \"60,000\" in line or \"10\" in line and \"≫\" in line:\n                print(repr(line))\n        break\nEOF", "timeoutMs": 180000}
+```
+
+<details><summary>📤 工具返回（237 字符）</summary>
+
+```
+'60,000 �������� N=50��p=15%�� '
+[stderr]
+Traceback (most recent call last):
+  File "<stdin>", line 8, in <module>
+UnicodeEncodeError: 'gbk' codec can't encode character '\u2074' in position 11: illegal multibyte sequence
+
+[exit code: 1]
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+The UnicodeEncodeError confirms the character \u2074 (superscript 4) is now in the PDF text — so the formula rendered as "10⁴".
+
+Console can't print it due to GBK. Fine — the render is what matters. Let me visually confirm by rendering the correct region: the formula is in 6.3 at the bottom of page 12 (PDF page 16). Let me render the full page and look.
+
+Actually I already know: the page 12 image earlier showed the formula at bottom around y≈840-860 in a 1111px-high image at dpi95. Let me render full page and inspect.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nimport os, pymupdf\ndoc = pymupdf.open(os.path.join(os.environ[\"TEMP\"], \"REPORT_final.pdf\"))\ndoc[15].get_pixmap(dpi=110).save(os.path.join(os.environ[\"TEMP\"], \"p12.png\"))\nEOF\nrm -f /d/work/default-workspace/ocean-dm-hw/*.png; cp \"$TEMP/p12.png\" /d/work/default-workspace/ocean-dm-hw/p12.png", "timeoutMs": 180000}
+```
+
+<details><summary>📤 工具返回（11 字符）</summary>
+
+```
+(no output)
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\p12.png"}
+```
+
+<details><summary>📤 工具返回（141 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\p12.png</path>
+<type>image</type>
+<content>
+image/png image, 910x1287 px, 163088 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Formula now reads "α/β ≈ 6×10⁴ ≫ (4×56)/(0.15×50) = 29.9" — much better.
+
+Note: "(4×56)/(0.15×50)" has parens because numerator has operators — correct.
+
+Now finalize:
+1. Update git remote to ocean-dm-hw.
+2. Regenerate chatlog.
+3. Commit, push.
+4. Verify links in report point to new repo and that raw URL works.
+
+Also update README? It has no repo URL. Fine.
+
+One more check: the docx page count 21 (cover + 摘要 + 2 TOC + 17 body). Fine.
+
+Let me also spot-check one more page for correctness — maybe page with 表3 (§5.1) to ensure numbers table renders and 6.1% is consistent. Quick text check instead of image: grep PDF text for "8.242" etc. Eh, the md is verified against CSV; docx mirrors md.
+
+Let me finish the push and then write the audit summary.
+
+Also: after pushing, verify the new raw URLs.
+
+Let me run.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && rm -f *.png\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit remote set-url origin git@github.com:DSHCDX/ocean-dm-hw.git\ngit remote -v | head -2\nbash tools/update_chatlog.sh 2>&1 | tail -1\ngit add -A\ngit -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"核查修正：仓库改名后链接、6.1% 笔误、表6 补 0.25× 列、图内重复标题、中文引号、公式排版\"\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q -u origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1\necho \"== 远端 ==\"; GIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" …（省略 77 字符）
 ```

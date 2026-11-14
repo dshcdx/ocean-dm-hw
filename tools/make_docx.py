@@ -53,9 +53,15 @@ def latex_to_text(s: str) -> str:
     for k, v in GREEK.items():
         s = s.replace(k, v)
     s = re.sub(r"\\(?:text|boxed|mathrm)\{([^{}]*)\}", r"\1", s)
-    s = re.sub(r"\\frac\{([^{}]*)\}\{([^{}]*)\}", r"(\1)/(\2)", s)
+    def _frac(m):
+        a, b = m.group(1).strip(), m.group(2).strip()
+        simple = lambda t: re.fullmatch(r"[A-Za-z\u0370-\u03ff0-9]+", t) is not None
+        return f"{a}/{b}" if (simple(a) and simple(b)) else f"({a})/({b})"
+    s = re.sub(r"\\frac\{([^{}]*)\}\{([^{}]*)\}", _frac, s)
     s = re.sub(r"\\[a-zA-Z]+\{?", "", s)
     s = s.replace("{", "").replace("}", "").replace("\\", "")
+    for k, v in (("^4", "⁴"), ("^2", "²"), ("^3", "³"), ("^n", "ⁿ")):
+        s = s.replace(k, v)
     return re.sub(r"\s{2,}", " ", s).strip()
 
 
@@ -189,7 +195,7 @@ def build_cover(doc):
 
     doc.add_paragraph()
     p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    cn(p.add_run("代码与完整 AI 对话记录：https://github.com/DSHCDX/servo-valve"), "宋体", 9)
+    cn(p.add_run("代码与完整 AI 对话记录：https://github.com/DSHCDX/ocean-dm-hw"), "宋体", 9)
 
 
 def style_headings(doc):
@@ -304,7 +310,7 @@ def parse_blocks(md):
 
 def build(toc_pages: dict[str, int] | None = None):
     md = open(SRC, encoding="utf-8").read()
-    md = re.sub(r"<REPO_URL>", "https://github.com/DSHCDX/servo-valve", md)
+    md = re.sub(r"<REPO_URL>", "https://github.com/DSHCDX/ocean-dm-hw", md)
 
     doc = Document()
     st = doc.styles["Normal"]
