@@ -1,12 +1,5 @@
 # 扇出效应的"部分完成"盲区：AI 智能体存档粒度与幂等键粒度的一致性实验
 
-> 课程：海洋数据挖掘技术 · 大作业
-> 切入点：第 3 讲《AI 智能体，也是分布式系统》——「可持久化执行 = 存档点 + 唯一编号」
-> 代码与完整 AI 对话记录：**https://github.com/DSHCDX/servo-valve**
-> 日期：2026-11-14
-
----
-
 ## 摘要
 
 第 3 讲把 AI 智能体的可靠性归结为两条分布式系统的基本功：**存档点**（崩溃后能接着跑）与**唯一编号**（重复调用不重复生效）。2026 年 10 月的一篇预印本用 5940 次实验把这条经验量化了，结论是「步级（step-level）存档相对于无崩溃对照组没有显著增加重复副作用」，因而被视为安全的默认做法。本文指出这个结论依赖一个未写出的前提：**一步只产生一个效应，且该效应是原子的**。
@@ -20,6 +13,8 @@
 结论：**存档粒度必须与效应粒度对齐**；「步级即安全」只在一步一效应时成立，而智能体最典型的副作用恰恰不是。
 
 **关键词**：AI 智能体；可持久化执行；幂等键；扇出效应；崩溃恢复；重复副作用
+
+**代码与完整 AI 对话记录**：https://github.com/DSHCDX/servo-valve
 
 ---
 
@@ -50,7 +45,7 @@
 ### 2.1 已经有结论的部分
 
 **① 粒度与键的因子实验（2026-10）**
-Madan 的预印本 [*Recovery That Re-Asks the Model: Duplicate and Lost Side Effects in Crash-Recovered LLM Agents*](https://zenodo.org/records/23371575) 做了 5940 次实验，把「决策记录粒度（step / turn）」× 「幂等键派生方式（provider call-id / 参数哈希 / 位置键）」做成因子设计。它的核心数字是：
+Madan 的预印本 [*Recovery That Re-Asks the Model: Duplicate and Lost Side Effects in Crash-Recovered LLM Agents*](https://zenodo.org/records/23371575) 做了 5940 次实验[1]，把「决策记录粒度（step / turn）」× 「幂等键派生方式（provider call-id / 参数哈希 / 位置键）」做成因子设计。它的核心数字是：
 
 - **turn 级记录**：用 provider 生成的 call-id 时，重复副作用比无崩溃对照组多出 **82–97 个百分点**；用参数哈希时多 80 个百分点；用位置键时反而多出 8 个百分点的**漏发**；
 - **step 级记录**：三种键策略下都没有统计显著的增加。
@@ -58,10 +53,10 @@ Madan 的预印本 [*Recovery That Re-Asks the Model: Duplicate and Lost Side Ef
 结论句是：*"preserving the model's original decision before executing external actions is essential"*——执行外部动作前先把模型的原始决策钉住。
 
 **② 工业界真的实现了两阶段写**
-[Reactive Agents 的 durable execution 文档](http://docs.reactiveagents.dev/guides/durable-execution/)写得很细：每次工具调用前先写一行 `executing`，结束后覆写成终态；崩溃落在中间就标记为 `ambiguous-then-replayed`——诚实地承认"这次可能执行了两遍"。它的存档粒度是 `checkpointEvery: 1`，即每个迭代边界。LangGraph 的做法类似：每个节点执行完存一次状态。
+[Reactive Agents 的 durable execution 文档](http://docs.reactiveagents.dev/guides/durable-execution/)[2]写得很细：每次工具调用前先写一行 `executing`，结束后覆写成终态；崩溃落在中间就标记为 `ambiguous-then-replayed`——诚实地承认"这次可能执行了两遍"。它的存档粒度是 `checkpointEvery: 1`，即每个迭代边界。LangGraph 的做法类似：每个节点执行完存一次状态。
 
 **③ 引擎层的确定性重放约束**
-Temporal 这类引擎要求 workflow 代码必须确定性：所有 I/O、模型调用、读时钟都要放进 activity 并把结果记录下来，恢复时重放代码、喂回记录的结果。
+Temporal 这类引擎要求 workflow 代码必须确定性[3]：所有 I/O、模型调用、读时钟都要放进 activity 并把结果记录下来，恢复时重放代码、喂回记录的结果。
 
 ### 2.2 没人说清的部分（也就是我的切口）
 
@@ -164,6 +159,8 @@ $$
 
 ### 4.2 六条建模假设（必须显式写出，否则结论不可信）
 
+**表 1** 模拟器的六条建模假设
+
 | 编号 | 假设 | 理由 |
 |---|---|---|
 | A1 | 每次"尝试"以概率 $p$ 崩溃一次；崩溃点在该次剩余工作单元上均匀分布；形态三选一：`before`（50%，单元未执行）、`after_effect`（35%，效应已发生但记录未落盘）、`after_journal`（15%，调用日志终态已写但步骤存档未写） | 后两种形态分别对应两阶段写的"要解决的窗口"和"确实解决了的窗口" |
@@ -176,6 +173,8 @@ $$
 时间尺度：1 个工作单元 = 1 tick，1 次持久化写 = 0.2 tick。
 
 ### 4.3 五个策略
+
+**表 2** 五种存档与幂等键策略
 
 | 代号 | 存档 | 幂等键 | 对应现实 |
 |---|---|---|---|
@@ -199,7 +198,7 @@ $$
 
 ![图1 扇出规模与崩溃率对重复副作用的影响](../figures/fig1_duplicates.png)
 
-**表 1** $N=50$、$p=30\%$ 时的核心数字（2000 次运行均值）
+**表 3** $N=50$、$p=30\%$ 时的核心数字（2000 次运行均值）
 
 | 策略 | 重复条数 | 漏发条数 | token | 写入次数 | 放弃率 |
 |---|---|---|---|---|---|
@@ -209,7 +208,7 @@ $$
 | S3 步级+两相日志 | 8.252 | 0.315 | 3756 | 12.12 | 6.1% |
 | **S4 扇出账本** | **0.188** | **0.015** | 3798 | 100.75 | **1.0%** |
 
-三个读数值得单独拎出来：
+三个读数值得单独拎出来（见上表 3）：
 
 **① 步级存档相对轮级只减少 6.2%。** 8.781 → 8.242。文献里"step 级安全"的结论在这里几乎不成立。原因很直接：重复全部来自扇出内部的部分完成，而轮级和步级的差别只是"重跑一整轮"还是"重跑一整步"——**只要那一步包含整个扇出，重跑的范围就一样是 N 条**。
 
@@ -237,6 +236,8 @@ S0 在 $p=30\%$ 时平均烧掉 4862 token，比 S2 多 **29%**；放弃率 9.5%
 
 ### 5.5 $N=1$ 的反例：账本并不总是对的
 
+**表 4** $N=1$、$p=30\%$ 时账本反而略差
+
 | N=1, p=30% | 重复 | 漏发 | 写入 |
 |---|---|---|---|
 | S2 步级 | 0.032 | 0.002 | 0.36 |
@@ -249,6 +250,8 @@ S0 在 $p=30\%$ 时平均烧掉 4862 token，比 S2 多 **29%**；放弃率 9.5%
 ## 6. 门槛的解析与验证
 
 ### 6.1 解析式与模拟的对照
+
+**表 5** 解析式与模拟实测的偏差
 
 由 §3.3 推出的 $\mathbb{E}[D] \approx \frac{pN}{N+6}\cdot\frac{N+1}{2}$，与模拟实测对比：
 
@@ -264,6 +267,8 @@ S0 在 $p=30\%$ 时平均烧掉 4862 token，比 S2 多 **29%**；放弃率 9.5%
 ### 6.2 门槛两侧谁更优：20 组代价比扫描
 
 ![图5 采用账本的门槛](../figures/fig5_threshold.png)
+
+**表 6** 门槛两侧的胜者（α/β 取临界值的 0.25/0.5/1/2/4 倍）
 
 对每个 $(N, p)$ 组合，在临界值 $\alpha/\beta = 4(N+6)/(pN)$ 的 0.25×、0.5×、1×、2×、4× 五档上分别计算 S2 与 S4 的总代价 $C$，观察胜者：
 
@@ -306,7 +311,7 @@ $$
 
 ### 7.3 与预印本结论的关系
 
-预印本说"step 级安全"，我说"在扇出场景下不安全"。这两句不矛盾——它们的前提不同。我想强调的是：**"安全"是个有前提的词**，而原始论文没有把"一步一效应"这个前提写出来。这是在复现之上的推进，不是推翻。
+预印本[1]说"step 级安全"，我说"在扇出场景下不安全"。这两句不矛盾——它们的前提不同。我想强调的是：**"安全"是个有前提的词**，而原始论文没有把"一步一效应"这个前提写出来。这是在复现之上的推进，不是推翻。
 
 ---
 
@@ -365,7 +370,21 @@ python sim/analyze.py     # 约 1 分钟，产出 figures/*.png 与门槛数据
 
 ---
 
-## 10. AI 协作说明
+## 10. 参考文献
+
+[1] MADAN P. Recovery that re-asks the model: duplicate and lost side effects in crash-recovered LLM agents[EB/OL]. Zenodo, 2026-10-14. https://doi.org/10.5281/zenodo.23371575.
+
+[2] Reactive Agents. Durable execution: checkpoint, resume, and tool-effect recording[EB/OL]. 2026. http://docs.reactiveagents.dev/guides/durable-execution/.
+
+[3] Temporal Technologies. Workflow determinism and replay[EB/OL]. 2026. https://docs.temporal.io/workflow-execution.
+
+[4] Durable execution for AI agents: a design pattern for fault-tolerant agent loops[C/OL]//2026 IEEE International Conference on Services Computing. IEEE, 2026. https://ieeexplore.ieee.org/abstract/document/11638700.
+
+[5] 国家质量监督检验检疫总局, 中国国家标准化管理委员会. 信息与文献 参考文献著录规则: GB/T 7714—2015[S]. 北京: 中国标准出版社, 2015.
+
+---
+
+## 11. AI 协作说明
 
 本次作业全程与 AI 协作完成，完整对话记录见仓库内的 `chatlog/AI_CONVERSATION.md`。这里只记录**有据可查**的关键节点，读过记录即可核对：
 
