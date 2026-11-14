@@ -95,6 +95,9 @@ def add_runs(par, text: str, font="宋体", size=12):
             r.font.size = Pt(size - 1)
             r.font.color.rgb = RGBColor(0x8B, 0x45, 0x13)
         else:
+            # 行内链接只保留可见文字（网址在参考文献里），并去掉单星号斜体
+            tok = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", tok)
+            tok = re.sub(r"\*([^*]+)\*", r"\1", tok)
             cn(par.add_run(tok), font, size)
 
 

@@ -10972,3 +10972,139 @@ saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 659 KB; 21 ҳ; pd
 ```json
 {"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nimport os, pymupdf\ndoc = pymupdf.open(os.path.join(os.environ[\"TEMP\"], \"REPORT_final.pdf\"))\nprint(\"pages:\", len(doc))\n# 确认斜体问题已消失、封面有链接\nprint(\"封面含链接:\", \"servo-valve\" in doc[0].get_text())\nprint(\"残留星号:\", sum(1 for p in doc if \"*\" in p.get_text()))\nEOF\nbash tools/update_chatlog.sh 2>&1 | tail -1\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"补行业争议小节、实验环境、封面仓库链接；修正未引用的参考文献；对话记录加导航\"\nG …（省略 219 字符）
 ```
+
+<details><summary>📤 工具返回（123 字符）</summary>
+
+```
+pages: 21
+���溬����: True
+�����Ǻ�: 3
+已更新 chatlog/AI_CONVERSATION.md
+ab5b7a74f51ff11521369889c3bb0d923ea88653	refs/heads/main
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Pushed (ab5b7a7). There are 3 pages with "*" remaining — probably `p<0.05` style? Or leftover markdown emphasis like `**` in tables? Let me check which pages and whether it's a real defect (e.g., literal `**` in text).
+
+Let me grep the PDF text for lines containing "*".
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nimport os, pymupdf\ndoc = pymupdf.open(os.path.join(os.environ[\"TEMP\"], \"REPORT_final.pdf\"))\nfor i, pg in enumerate(doc):\n    for line in pg.get_text().splitlines():\n        if \"*\" in line:\n            print(f\"p{i+1}: {line[:90]}\")\nEOF", "timeoutMs": 180000}
+```
+
+<details><summary>📤 工具返回（435 字符）</summary>
+
+```
+p6: Madan ��Ԥӡ�� [*Recovery That Re-Asks the Model: Duplicate and Lost Side 
+p6: Effects in Crash-Recovered LLM Agents*](https://zenodo.org/records/23371575) ���� 
+p7: ���۾��ǣ�*"preserving the model's original decision before executing external 
+p7: actions is essential"*����ִ���ⲿ����ǰ�Ȱ�ģ�͵�ԭʼ���߶�ס�� 
+p19: python sim/run_main.py    # Լ 10 �룬���� results/*.csv 
+p19: python sim/analyze.py     # Լ 1 ���ӣ����� figures/*.png ���ż�����
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Two real defects:
+1. Page 6: the markdown inline link `[*Recovery That Re-Asks the Model: ...*](https://...)` — my parser doesn't handle inline links; it renders raw markdown including the URL. Need to handle `[text](url)` in add_runs: render text (with url appended or as footnote). Simplest: strip to "text（url）"? Or just text + superscript? For print, better: text only, URL in 参考文献 (already [1]).
+
+2. Page 7: `*"preserving the model's original decision...essential"*` — italic markers again.
+
+3. p19 asterisks are in code block (`results/*.csv`) — legitimate.
+
+Fix: 
+- In add_runs, handle `[label](url)` → label (and if label starts with *..., strip asterisks). 
+- Add a regex to convert single-asterisk emphasis in md → 中文引号 or drop asterisks: replace `\*([^*\n]+)\*` with `\1`（or 「\1」）during parsing.
+
+Implement in make_docx.py:
+- regex for links: `\[([^\]]+)\]\(([^)]+)\)` → replace with `\1`（drop URL since references hold them) — but for the two links in §2.1 the reader loses the URL; the reference list has [1]. Acceptable; or keep as `\1（\2）` too long. I'll drop URL and rely on refs.
+- regex for italics: `\*([^*]+)\*` → `「\1」` after bold handling? Careful: bold `**x**` handled first by split. Since add_runs splits on `**...**`, remaining single `*` can be stripped.
+
+Simplest: preprocess text before add_runs: 
+```python
+def clean_md(text):
+    text = re.sub(r"\[([^\]]+)\]\((?:[^)]+)\)", r"\1", text)
+    text = re.sub(r"\*([^*]+)\*", r"\1", text)   # 单星号斜体
+    return text
+```
+But careful not to break `**bold**` — the single-asterisk regex `\*([^*]+)\*` won't match `**...**` since content between would include `*`? For `**粗体**`: pattern `\*([^*]+)\*` — at position 0: `*` then `[^*]+` must not include `*`, next char is `*` → fails; then at position 1: `*` + `粗体` + `*` → matches, leaving outer `*`... that would break bold into `*粗体*`. Bad.
+
+So apply the bold split FIRST and only clean italics on non-bold segments. Restructure add_runs: split on `**...**` and `` `...` ``, then within plain segments strip single-asterisk italics and links.
+
+Let me patch add_runs: in the else branch, before adding, apply `text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)` and `text = re.sub(r"\*([^*]+)\*", r"\1", text)`.
+
+Wait — the link text itself is `*Recovery...*` (italic inside link). After link strip → `*Recovery...*` → italic strip → fine.
+
+Also the bold-split regex `(\*\*[^*]+\*\*|`[^`]+`)` — for the link line, the whole thing is plain text, so else branch handles it. Good.
+
+Let me patch and rebuild, then verify p6/p7 clean, then commit/push.
+
+Also update chatlog (again) — the chatlog update after this will include this turn.
+
+Let me do it.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\np = \"tools/make_docx.py\"\ns = open(p, encoding=\"utf-8\").read()\ns = s.replace('''        else:\n            cn(par.add_run(tok), font, size)''',\n'''        else:\n            # 行内链接只保留可见文字（网址在参考文献里），并去掉单星号斜体\n            tok = re.sub(r\"\\\\[([^\\\\]]+)\\\\]\\\\([^)]+\\\\)\", r\"\\\\1\", tok)\n            tok = re.sub(r\"\\\\*([^*]+)\\\\*\", r\"\\\\1\", tok)\n            cn(par.add_run(tok), font, size)''')\nopen(p, \"w\", encoding=\"utf-8\").write(s)\nprint(\"ok\")\nPY\npython tools/make_docx.py 2>&1 | tail -1\npyt …（省略 300 字符）
+```
+
+<details><summary>📤 工具返回（311 字符）</summary>
+
+```
+ok
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 659 KB; 21 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+�����Ǻ���: 2
+(19, 'python sim/run_main.py    # Լ 10 �룬���� results/*.csv ')
+(19, 'python sim/analyze.py     # Լ 1 ���ӣ����� figures/*.png ���ż����� ')
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Only the code-block asterisks remain (legitimate, `results/*.csv`).
+
+Now: update chatlog, commit, push. Then write the gap-analysis reply.
+
+Let me also make sure the chatlog includes this turn (it will after running the script).
+
+Then compose the answer: list of gaps found and fixed, plus remaining items for the user.
+
+Gaps found:
+1. 参考文献 [4][5] 从未在正文引用 → 违反 GB/T 7714 顺序编码制；已补引用。
+2. 要求里明确要"行业争议"，报告只有 §2.2 隐含 → 新增 §2.3 三处真实分歧（含表）。
+3. 要求"报告里把仓库链接贴在显著位置" → 之前只在摘要；现在封面也加了。
+4. 对话记录声明"未删改"但实际有 1 处 2 万字符截断 → 措辞改正；并加了"记录导航"表，标出第 14 轮起才是作业讨论。
+5. 实验环境没写（可复现性要求） → 补 Python 版本/耗时/无 API。
+6. Markdown 残留（行内链接和斜体星号）在 Word 里显示成生 markdown → 修了解析器。
+7. 表 1、表 2 从未在正文被引用（只出现在表格上方） → 补"见表 X"。
+
+仍然缺的（需要用户）：
+- §11 留白（选题动机）。
+- 英文摘要：浙大规范有英文摘要页，课程报告一般不做；要不要加？
+- 仓库名 servo-valve 与作业无关，老师点进去可能困惑；改名要网页操作。
+- 七次课里我们只用了第3讲（因为只有这一讲 PPT）；符合要求。
+
+Also worth flagging: (3) 说"确保我能直接点开" — 仓库 public 已验证。
+
+Let me finish the push first.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && bash tools/update_chatlog.sh 2>&1 | tail -1\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"修正 docx 里残留的 Markdown 语法（行内链接、斜体星号）\"\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git ls-remote --heads origin 2>/dev/null | cut -c1-12\ngit log --oneline | head -2", "timeoutMs": 600000}
+```
