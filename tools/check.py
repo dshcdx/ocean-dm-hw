@@ -46,8 +46,8 @@ lines = md.splitlines()
 rows = list(csv.DictReader(io.open(SUMMARY, encoding="utf-8")))
 idx = {(r["policy"], int(r["n_units"]), float(r["p_crash"])): r for r in rows}
 
-cap3 = next((i for i, l in enumerate(lines) if l.startswith("**表 3**")), None)
-check(cap3 is not None, "找不到表 3 的题注")
+cap3 = next((i for i, l in enumerate(lines) if l.startswith("**表 4**")), None)
+check(cap3 is not None, "找不到表 4 的题注")
 tbl_rows = []
 if cap3 is not None:
     for l in lines[cap3:]:
@@ -63,28 +63,34 @@ for cells in tbl_rows:
     if hit:
         parsed[hit.group(0)] = cells
 
-check(len(parsed) == 5, f"表 3 应含 5 个策略行，实际 {len(parsed)}")
+check(len(parsed) == 5, f"表 4 应含 5 个策略行，实际 {len(parsed)}")
 for pol in ("S0", "S1", "S2", "S3", "S4"):
     if pol not in parsed:
-        fails.append(f"表 3 缺 {pol} 行")
+        fails.append(f"表 4 缺 {pol} 行")
         continue
     cells = parsed[pol]
     r = idx[(pol, 50, 0.30)]
-    for text, key, label in ((cells[1], "dup_mean", "重复"), (cells[2], "lost_mean", "漏发")):
+    for text, key, label in ((cells[1], "dup_mean", "重复"), (cells[4], "loss_mean", "漏发")):
         got = float(text.replace("**", "").strip())
         want = float(r[key])
-        check(abs(got - want) < 5e-4, f"表3 {pol} {label}：报告 {got} ≠ 数据 {want}")
+        check(abs(got - want) < 5e-4, f"表4 {pol} {label}：报告 {got} ≠ 数据 {want}")
 
 # ---------------------------------------------------------------- 2 派生百分比
 def num(pol, key):
     return float(idx[(pol, 50, 0.30)][key])
 
-pairs = [
-    (f"{(num('S1', 'dup_mean') - num('S2', 'dup_mean')) / num('S1', 'dup_mean') * 100:.1f}%", "步级降幅"),
-    (f"{(num('S2', 'dup_mean') - num('S4', 'dup_mean')) / num('S2', 'dup_mean') * 100:.1f}%", "账本降幅"),
-    (f"{(num('S2', 'lost_mean') - num('S4', 'lost_mean')) / num('S2', 'lost_mean') * 100:.1f}%", "漏发降幅"),
+d2, d4 = num("S2", "dup_mean"), num("S4", "dup_mean")
+w2, w4 = num("S2", "writes_mean"), num("S4", "writes_mean")
+t2, t4 = num("S2", "ticks_mean"), num("S4", "ticks_mean")
+
+checks = [
+    (f"{(d2 - d4) / d2 * 100:.1f}%", "账本相对步级的重复降幅"),
+    (f"{d2 - d4:.3f}".rstrip("0"), "重复差的绝对值"),
+    (f"{w4:.2f}", "账本写入次数"),
+    (f"{w4 / w2:.1f} 倍", "写入放大倍数"),
+    (f"{(t4 - t2) / t2 * 100:.1f}%", "模拟时间增幅"),
 ]
-for text, label in pairs:
+for text, label in checks:
     check(text in md, f"正文未出现复算的{label} {text}")
 
 # ---------------------------------------------------------------- 3 参考文献
@@ -101,7 +107,7 @@ for n in sorted(cited - listed):
 
 # ---------------------------------------------------------------- 4 图/表
 figs = re.findall(r"^!\[(图\s*\d+)(.*?)\]\((.*?)\)", md, re.M)
-check(len(figs) == 7, f"图数量应为 7，实际 {len(figs)}")
+check(len(figs) == 4, f"图数量应为 4，实际 {len(figs)}")
 prose = "\n".join(l for l in lines if not l.startswith("![") and not l.startswith("**表"))
 for num, _cap, path in figs:
     tag = re.sub(r"\s+", "", num)          # 图2
@@ -124,8 +130,8 @@ doc_text = "".join(t.text or "" for t in root.iter(f"{W}t"))
 for bad, desc in (("**", "Markdown 粗体"), ("$", "LaTeX 美元符"),
                   ("](", "Markdown 链接"), ('"', "ASCII 双引号")):
     check(bad not in doc_text, f"docx 中残留{desc}（{bad!r}）")
-check(len([n for n in z.namelist() if n.startswith("word/media/")]) == 7,
-      "docx 内嵌图片应为 7 张")
+check(len([n for n in z.namelist() if n.startswith("word/media/")]) == 4,
+      "docx 内嵌图片应为 4 张")
 
 # ---------------------------------------------------------------- 6 仓库链接
 remote = subprocess.run(["git", "-C", ROOT, "remote", "get-url", "origin"],

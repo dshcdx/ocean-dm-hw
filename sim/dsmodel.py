@@ -1,51 +1,23 @@
 """
-存档点粒度 vs 重复副作用：台风预警群发场景的离散事件模拟器
-================================================================
+存档点粒度 vs 重复副作用：台风预警群发场景的离散事件模拟器（v2）
+====================================================================
 
-被模拟的系统：一个"台风预警生成并群发"的 AI 智能体。工作流：
+v2 相对 v1 的四处实质修改（对应两位匿名审稿人的意见）：
+  1) 随机种子改为 hashlib 派生，跨进程稳定（v1 用 hash(str)，Python 每进程随机化）
+  2) 写入语义统一：正常执行路径也计 checkpoint 写，不再只在恢复时写
+  3) S4 的恢复改为真正读持久化的 ack 集合，不再使用“模拟器知道断在哪”的上帝视角
+  4) S3 补上调用前置 intent 行，恢复时区分“有 intent 无终态”的不确定状态
 
-    decide      LLM 决策：预警等级 + 目标单位列表         (1 单元, 1600 token)
-    query       查卫星云图（只读、幂等）                  (1 单元, 0 token)
-    compose     LLM 组稿                                (1 单元, 1200 token)
-    send_alert  扇出群发：向 N 个沿海单位各发一条         (N 单元, 0 token)
-    archive     归档写（带版本号）                         (1 单元, 200 token)
-    summarize   LLM 收尾摘要                             (1 单元, 800 token)
+工作流（6 步，第 4 步扇出成 N 个子效应）：
+    decide(L) → query(只读) → compose(L) → send_alert(扇出 N) → archive(写) → summarize(L)
 
-建模假设（报告 §3.2 全部显式写出）：
-
-A1 崩溃模型
-   每次"尝试"以概率 p 崩溃一次，崩溃点为该次剩余工作单元中的一个，形态三选一：
-     - before        (50%)：单元尚未执行
-     - after_effect  (35%)：效应已发生，持久化记录未落盘
-     - after_journal (15%)：调用日志终态已写，步骤存档未写
-   after_effect 是两阶段写要解决的窗口；after_journal 是它确实解决了的那个窗口。
-
-A2 接收端不去重
-   沿海单位的值班手机 / 短信网关 / 群机器人都不支持幂等键：发两次就是收到两条。
-   因此幂等键只能约束"我方不重复发起"。
-
-A3 幂等键粒度
-   - call      ：一次 send_alert 一个键，重放时整批重发
-   - subeffect ：每个 (预警号, 单位号) 一个键
-
-A4 存档粒度（本次实验的五个策略）
-   S0 none     不存档，崩溃后从头再来
-   S1 turn     每 2 步存一次档
-   S2 step     每步结束存一次档
-   S3 step+call 步级存档 + 每次工具调用前后各写一行（工业界两相日志）
-   S4 step+sub  步级存档 + 每个子效应"发前意向、发后确认"（本文提案）
-
-A5 时限
-   模拟时间超过 deadline 即放弃，未送达计为漏发——把"重放耗时"折成业务代价。
-
-A6 重试上限
-   连续崩溃超过 max_crashes 次放弃，未送达计为漏发。
-
-时间尺度：1 单元 = 1 tick；1 次持久化写 = 0.2 tick。
+建模假设 A1–A6 与 v1 相同，见报告 §4.2。
+时间尺度：1 工作单元 = 1 tick；1 次持久化写 = WRITE_TICK。
 """
 
 from __future__ import annotations
 
+import hashlib
 import random
 from collections import Counter
 from dataclasses import dataclass
@@ -58,9 +30,20 @@ TOK_ARCHIVE = 200
 TOK_SUMMARY = 800
 
 UNIT_TICK = 1.0
-WRITE_TICK = 0.2
+WRITE_TICK = 0.2          # 一次持久化写折算的时间
 
-P_BEFORE, P_AFTER_EFFECT, P_AFTER_JOURNAL = 0.50, 0.35, 0.15
+# 崩溃相位（累计阈值）：before / after_effect / after_journal
+P_BEFORE = 0.50
+P_AFTER_EFFECT = 0.85     # 累计到 0.85 为止
+P_AFTER_JOURNAL = 1.00
+
+MAX_CRASHES = 3
+
+
+def make_seed(*parts) -> int:
+    """跨进程稳定的种子派生（不依赖 PYTHONHASHSEED）。"""
+    key = "|".join(str(p) for p in parts).encode("utf-8")
+    return int.from_bytes(hashlib.blake2b(key, digest_size=8).digest(), "big") >> 1
 
 
 # ---------------------------------------------------------------- 工作流
@@ -69,7 +52,7 @@ P_BEFORE, P_AFTER_EFFECT, P_AFTER_JOURNAL = 0.50, 0.35, 0.15
 class Unit:
     step: int
     sub: int | None
-    kind: str          # 'llm' | 'read' | 'fanout' | 'write'
+    kind: str            # 'llm' | 'read' | 'fanout' | 'write'
     tokens: int
     target: str | None
 
@@ -77,11 +60,15 @@ class Unit:
     def is_effect(self) -> bool:
         return self.kind == "fanout"
 
+    @property
+    def is_tool(self) -> bool:
+        return self.kind != "llm"
+
 
 def build_units(n_units: int) -> list[Unit]:
-    units: list[Unit] = [Unit(0, None, "llm", TOK_DECIDE, None),
-                         Unit(1, None, "read", 0, None),
-                         Unit(2, None, "llm", TOK_COMPOSE, None)]
+    units = [Unit(0, None, "llm", TOK_DECIDE, None),
+             Unit(1, None, "read", 0, None),
+             Unit(2, None, "llm", TOK_COMPOSE, None)]
     units += [Unit(3, k, "fanout", 0, f"U{k:03d}") for k in range(n_units)]
     units += [Unit(4, None, "write", TOK_ARCHIVE, None),
               Unit(5, None, "llm", TOK_SUMMARY, None)]
@@ -95,6 +82,10 @@ def step_first_index(units: list[Unit]) -> dict[int, int]:
     return out
 
 
+def n_steps(units: list[Unit]) -> int:
+    return max(u.step for u in units) + 1
+
+
 # ---------------------------------------------------------------- 策略
 
 @dataclass(frozen=True)
@@ -103,6 +94,10 @@ class Policy:
     label: str
     checkpoint: str     # 'none' | 'turn' | 'step'
     journal: str        # 'none' | 'call' | 'subeffect'
+
+    @property
+    def has_call_journal(self) -> bool:
+        return self.journal in ("call", "subeffect")
 
 
 POLICIES: list[Policy] = [
@@ -127,56 +122,96 @@ class RunResult:
     abandoned: bool = False
 
 
+def deadline_for(n_units: int, factor: float = 1.35) -> float:
+    """
+    业务截止时间：与策略无关的固定预算（审稿意见 R2-M4）。
+    v1 里 deadline 由各策略自己的干净运行耗时推算，等于“贵策略自动获得更宽的时限”，
+    使各策略不可比。这里改为统一预算：一次干净运行 + 12 次名义写入，再乘 1.35。
+    """
+    units = len(build_units(n_units))
+    nominal_writes = 12
+    return factor * (units * UNIT_TICK + nominal_writes * WRITE_TICK)
+
+
+# ---------------------------------------------------------------- 核心模拟
+
 def simulate(policy: Policy, n_units: int, p_crash: float,
              rng: random.Random, deadline: float,
-             max_crashes: int = 3) -> RunResult:
+             max_crashes: int = MAX_CRASHES) -> RunResult:
     units = build_units(n_units)
     first = step_first_index(units)
-    n_steps = max(u.step for u in units) + 1
-    last_index_of_step = {s: max(i for i, u in enumerate(units) if u.step == s)
-                          for s in range(n_steps)}
+    ns = n_steps(units)
+    last_of_step = {s: max(i for i, u in enumerate(units) if u.step == s)
+                    for s in range(ns)}
 
     delivered: Counter[str] = Counter()
-    journaled: set[int] = set()      # S3：已写终态的调用（按 step）
+    acked: set[int] = set()          # S4：已落盘的子效应确认（按 unit 下标）
+    terminal: set[int] = set()       # S3：已写终态的调用（按 step）
     res = RunResult()
     cursor = 0
 
     while cursor < len(units):
-        # -------- 本次尝试的崩溃点与形态
         will_crash = rng.random() < p_crash
         crash_idx = rng.choice(range(cursor, len(units))) if will_crash else len(units)
         r = rng.random()
-        phase = ("before" if r < P_BEFORE
-                 else "after_effect" if r < P_BEFORE + P_AFTER_EFFECT
-                 else "after_journal") if will_crash else ""
+        if not will_crash:
+            phase = ""
+        elif r < P_BEFORE:
+            phase = "before"
+        elif r < P_AFTER_EFFECT:
+            phase = "after_effect"
+        else:
+            phase = "after_journal"
 
-        # -------- 执行
         while cursor < len(units):
             u = units[cursor]
-
             if will_crash and cursor == crash_idx and phase == "before":
                 break
 
-            # 执行该单元
+            step = u.step
+            # ---- 调用级 intent 行（S3/S4 对非扇出工具；S3 对扇出也写）
+            if u.kind == "fanout":
+                if policy.journal in ("call", "subeffect") and cursor == first[3]:
+                    res.writes += 1
+                    res.ticks += WRITE_TICK
+                if policy.journal == "subeffect" and cursor not in acked:
+                    res.writes += 1          # 逐条 intent
+                    res.ticks += WRITE_TICK
+            elif u.kind in ("read", "write") and cursor == first[step] \
+                    and policy.has_call_journal:
+                res.writes += 1
+                res.ticks += WRITE_TICK
+
+            # ---- 执行
             if u.kind == "fanout":
                 delivered[u.target] += 1
                 if policy.journal == "subeffect":
-                    res.writes += 2                       # 意向 + 确认
-                    res.ticks += 2 * WRITE_TICK
+                    acked.add(cursor)        # 逐条 ack 落盘
+                    res.writes += 1
+                    res.ticks += WRITE_TICK
             else:
                 res.tokens += u.tokens
             res.ticks += UNIT_TICK
             cursor += 1
 
-            # 调用级日志：一步一次调用，完成后写终态
-            if policy.journal == "call" and (cursor - 1) == last_index_of_step[u.step]:
-                res.writes += 2
-                res.ticks += 2 * WRITE_TICK
-                journaled.add(u.step)
+            # ---- 步骤完成：调用终态 + 步骤存档
+            if (cursor - 1) == last_of_step[step]:
+                if policy.journal == "call":
+                    res.writes += 1
+                    res.ticks += WRITE_TICK
+                    terminal.add(step)
+                if policy.checkpoint == "step":
+                    res.writes += 1
+                    res.ticks += WRITE_TICK
+                elif policy.checkpoint == "turn" and step % 2 == 1:
+                    res.writes += 1
+                    res.ticks += WRITE_TICK
 
             if will_crash and (cursor - 1) == crash_idx:
                 if phase == "after_effect":
-                    journaled.discard(u.step)             # 终态没写出去
+                    terminal.discard(step)
+                    if policy.journal == "subeffect" and u.kind == "fanout":
+                        acked.discard(cursor - 1)   # ack 未落盘
                     break
                 if phase == "after_journal":
                     break
@@ -185,41 +220,36 @@ def simulate(policy: Policy, n_units: int, p_crash: float,
                 res.abandoned = True
                 break
 
-        if cursor >= len(units):
-            break
-        if res.abandoned:
+        if cursor >= len(units) or res.abandoned:
             break
 
-        # -------- 恢复
         res.crashes += 1
         if res.crashes > max_crashes:
             res.abandoned = True
             break
 
         crashed = units[min(crash_idx, len(units) - 1)]
+
         if policy.checkpoint == "none":
             cursor = 0
+            acked.clear()
+            terminal.clear()
+        elif crashed.kind == "fanout" and policy.journal == "subeffect":
+            # 只依据持久化的 ack 集合恢复：已确认的跳过，未确认的重发
+            idxs = [i for i in acked if units[i].kind == "fanout"]
+            cursor = (max(idxs) + 1) if idxs else first[3]
+        elif policy.journal == "call" and crashed.step in terminal:
+            nxt = crashed.step + 1
+            cursor = first[nxt] if nxt < ns else len(units)
         elif policy.checkpoint == "turn":
             cursor = first[(crashed.step // 2) * 2]
-        elif policy.journal == "subeffect":
-            cursor = crash_idx                            # 子效应级：从断点续
         else:
-            if policy.journal == "call" and crashed.step in journaled:
-                nxt = crashed.step + 1
-                cursor = first[nxt] if nxt < n_steps else len(units)
-            else:
-                cursor = first[crashed.step]
-
-        # 恢复动作的持久化开销
-        if policy.checkpoint in ("turn", "step"):
-            res.writes += 1
-            res.ticks += WRITE_TICK
+            cursor = first[crashed.step]
 
         if res.ticks > deadline:
             res.abandoned = True
             break
 
-    # -------- 指标结算
     for u in units:
         if not u.is_effect:
             continue
@@ -235,32 +265,25 @@ def simulate(policy: Policy, n_units: int, p_crash: float,
 
 def simulate_batch(n_units: int, p_crash: float, k: int,
                    rng: random.Random, deadline: float,
-                   max_crashes: int = 3) -> RunResult:
-    """
-    在 S3（整批一个键）与 S4（每个子效应一个键）之间插值：
-    把扇出按每批 k 条切成 ceil(N/k) 批，每批两阶段写（意向 + 确认），
-    恢复时整批重发——批次已确认的则跳过。
-
-    k = N  等价于 S3（整批一把），k = 1 等价于 S4（逐条账本）。
-    """
+                   max_crashes: int = MAX_CRASHES) -> RunResult:
+    """每批 k 条：k=N 等价于调用级日志，k=1 等价于子效应级账本。"""
     units = build_units(n_units)
     first = step_first_index(units)
-    n_steps = max(u.step for u in units) + 1
-    last_index_of_step = {s: max(i for i, u in enumerate(units) if u.step == s)
-                          for s in range(n_steps)}
+    ns = n_steps(units)
+    last_of_step = {s: max(i for i, u in enumerate(units) if u.step == s)
+                    for s in range(ns)}
 
     fan_start = first[3]
     batch_of = {i: (i - fan_start) // k for i in range(fan_start, fan_start + n_units)}
-    batch_first = {}
+    batch_first: dict[int, int] = {}
     for i, b in batch_of.items():
         batch_first.setdefault(b, i)
-    n_batches = len(batch_first)
 
     def batch_last(b: int) -> int:
         return batch_first[b] + min(k, n_units - b * k) - 1
 
     delivered: Counter[str] = Counter()
-    journaled: set[int] = set()      # 已写终态的批次
+    journaled: set[int] = set()
     res = RunResult()
     cursor = 0
 
@@ -268,33 +291,41 @@ def simulate_batch(n_units: int, p_crash: float, k: int,
         will_crash = rng.random() < p_crash
         crash_idx = rng.choice(range(cursor, len(units))) if will_crash else len(units)
         r = rng.random()
-        phase = ("before" if r < P_BEFORE
-                 else "after_effect" if r < P_BEFORE + P_AFTER_EFFECT
-                 else "after_journal") if will_crash else ""
+        if not will_crash:
+            phase = ""
+        elif r < P_BEFORE:
+            phase = "before"
+        elif r < P_AFTER_EFFECT:
+            phase = "after_effect"
+        else:
+            phase = "after_journal"
 
         while cursor < len(units):
             u = units[cursor]
-
             if will_crash and cursor == crash_idx and phase == "before":
                 break
 
-            # 已确认的批次整段跳过
-            if u.kind == "fanout" and batch_of[cursor] in journaled:
-                cursor += 1
-                continue
-
             if u.kind == "fanout":
+                if batch_of[cursor] in journaled:
+                    cursor += 1
+                    continue
+                if cursor == batch_first[batch_of[cursor]]:
+                    res.writes += 1          # 批次 intent
+                    res.ticks += WRITE_TICK
                 delivered[u.target] += 1
             else:
                 res.tokens += u.tokens
             res.ticks += UNIT_TICK
             cursor += 1
 
-            # 批次结束 → 写终态
-            if u.kind == "fanout" and cursor - 1 == batch_last(batch_of[cursor - 1]):
-                res.writes += 2
-                res.ticks += 2 * WRITE_TICK
+            if u.kind == "fanout" and (cursor - 1) == batch_last(batch_of[cursor - 1]):
+                res.writes += 1              # 批次终态
+                res.ticks += WRITE_TICK
                 journaled.add(batch_of[cursor - 1])
+
+            if (cursor - 1) == last_of_step[u.step]:
+                res.writes += 1              # 步骤存档
+                res.ticks += WRITE_TICK
 
             if will_crash and (cursor - 1) == crash_idx:
                 if phase == "after_effect":
@@ -322,12 +353,10 @@ def simulate_batch(n_units: int, p_crash: float, k: int,
                 nxt = batch_first.get(b + 1)
                 cursor = nxt if nxt is not None else len(units)
             else:
-                cursor = batch_first[b]          # 整批重发
+                cursor = batch_first[b]
         else:
             cursor = first[crashed.step]
 
-        res.writes += 1
-        res.ticks += WRITE_TICK
         if res.ticks > deadline:
             res.abandoned = True
             break

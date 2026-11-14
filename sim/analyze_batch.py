@@ -41,7 +41,7 @@ def fig6():
     ax.grid(alpha=0.3, which="both")
     ax.legend(fontsize=8)
     fig.tight_layout()
-    fig.savefig(os.path.join(FIGS, "fig6_batch_pareto.png"), bbox_inches="tight")
+    fig.savefig(os.path.join(FIGS, "fig4_batch_pareto.png"), bbox_inches="tight")
     plt.close(fig)
 
 
@@ -52,6 +52,7 @@ def fig7():
         if r["mix"] not in mixes:
             mixes.append(r["mix"])
     policies = ["S2", "S3", "S4", "SB(10)"]
+    rows = [r for r in rows if r["policy"] in policies]
     colors = {"S2": "#4f5d75", "S3": "#b8860b", "S4": "#2a9d8f", "SB(10)": "#8e44ad"}
     fig, ax = plt.subplots(figsize=(7.6, 4.2))
     width = 0.2
@@ -71,7 +72,7 @@ def fig7():
     ax.grid(alpha=0.3, axis="y")
     ax.legend(fontsize=8, ncol=4)
     fig.tight_layout()
-    fig.savefig(os.path.join(FIGS, "fig7_phase.png"), bbox_inches="tight")
+    fig.savefig(os.path.join(FIGS, "fig5_phase.png"), bbox_inches="tight")
     plt.close(fig)
 
 
