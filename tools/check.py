@@ -101,7 +101,7 @@ for n in sorted(cited - listed):
 
 # ---------------------------------------------------------------- 4 图/表
 figs = re.findall(r"^!\[(图\s*\d+)(.*?)\]\((.*?)\)", md, re.M)
-check(len(figs) >= 5, f"图数量异常：{len(figs)}")
+check(len(figs) == 7, f"图数量应为 7，实际 {len(figs)}")
 prose = "\n".join(l for l in lines if not l.startswith("![") and not l.startswith("**表"))
 for num, _cap, path in figs:
     tag = re.sub(r"\s+", "", num)          # 图2
@@ -111,7 +111,7 @@ for num, _cap, path in figs:
           f"{tag} 未在正文被引用")
 
 tabs = re.findall(r"^\*\*(表\s*\d+)\*\*", md, re.M)
-check(len(tabs) == 6, f"表题数量应为 6，实际 {len(tabs)}")
+check(len(tabs) == 9, f"表题数量应为 9，实际 {len(tabs)}")
 for num in tabs:
     tag = re.sub(r"\s+", "", num)
     check(tag in prose or tag.replace("表", "表 ") in prose,
@@ -124,8 +124,8 @@ doc_text = "".join(t.text or "" for t in root.iter(f"{W}t"))
 for bad, desc in (("**", "Markdown 粗体"), ("$", "LaTeX 美元符"),
                   ("](", "Markdown 链接"), ('"', "ASCII 双引号")):
     check(bad not in doc_text, f"docx 中残留{desc}（{bad!r}）")
-check(len([n for n in z.namelist() if n.startswith("word/media/")]) >= 5,
-      "docx 内嵌图片少于 5 张")
+check(len([n for n in z.namelist() if n.startswith("word/media/")]) == 7,
+      "docx 内嵌图片应为 7 张")
 
 # ---------------------------------------------------------------- 6 仓库链接
 remote = subprocess.run(["git", "-C", ROOT, "remote", "get-url", "origin"],

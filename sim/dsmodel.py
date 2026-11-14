@@ -229,3 +229,115 @@ def simulate(policy: Policy, n_units: int, p_crash: float,
         elif got > 1:
             res.duplicates += got - 1
     return res
+
+
+# ---------------------------------------------------------------- 批量旋钮
+
+def simulate_batch(n_units: int, p_crash: float, k: int,
+                   rng: random.Random, deadline: float,
+                   max_crashes: int = 3) -> RunResult:
+    """
+    在 S3（整批一个键）与 S4（每个子效应一个键）之间插值：
+    把扇出按每批 k 条切成 ceil(N/k) 批，每批两阶段写（意向 + 确认），
+    恢复时整批重发——批次已确认的则跳过。
+
+    k = N  等价于 S3（整批一把），k = 1 等价于 S4（逐条账本）。
+    """
+    units = build_units(n_units)
+    first = step_first_index(units)
+    n_steps = max(u.step for u in units) + 1
+    last_index_of_step = {s: max(i for i, u in enumerate(units) if u.step == s)
+                          for s in range(n_steps)}
+
+    fan_start = first[3]
+    batch_of = {i: (i - fan_start) // k for i in range(fan_start, fan_start + n_units)}
+    batch_first = {}
+    for i, b in batch_of.items():
+        batch_first.setdefault(b, i)
+    n_batches = len(batch_first)
+
+    def batch_last(b: int) -> int:
+        return batch_first[b] + min(k, n_units - b * k) - 1
+
+    delivered: Counter[str] = Counter()
+    journaled: set[int] = set()      # 已写终态的批次
+    res = RunResult()
+    cursor = 0
+
+    while cursor < len(units):
+        will_crash = rng.random() < p_crash
+        crash_idx = rng.choice(range(cursor, len(units))) if will_crash else len(units)
+        r = rng.random()
+        phase = ("before" if r < P_BEFORE
+                 else "after_effect" if r < P_BEFORE + P_AFTER_EFFECT
+                 else "after_journal") if will_crash else ""
+
+        while cursor < len(units):
+            u = units[cursor]
+
+            if will_crash and cursor == crash_idx and phase == "before":
+                break
+
+            # 已确认的批次整段跳过
+            if u.kind == "fanout" and batch_of[cursor] in journaled:
+                cursor += 1
+                continue
+
+            if u.kind == "fanout":
+                delivered[u.target] += 1
+            else:
+                res.tokens += u.tokens
+            res.ticks += UNIT_TICK
+            cursor += 1
+
+            # 批次结束 → 写终态
+            if u.kind == "fanout" and cursor - 1 == batch_last(batch_of[cursor - 1]):
+                res.writes += 2
+                res.ticks += 2 * WRITE_TICK
+                journaled.add(batch_of[cursor - 1])
+
+            if will_crash and (cursor - 1) == crash_idx:
+                if phase == "after_effect":
+                    journaled.discard(batch_of.get(cursor - 1, -1))
+                    break
+                if phase == "after_journal":
+                    break
+
+            if res.ticks > deadline:
+                res.abandoned = True
+                break
+
+        if cursor >= len(units) or res.abandoned:
+            break
+
+        res.crashes += 1
+        if res.crashes > max_crashes:
+            res.abandoned = True
+            break
+
+        crashed = units[min(crash_idx, len(units) - 1)]
+        if crashed.kind == "fanout":
+            b = batch_of[crash_idx]
+            if b in journaled:
+                nxt = batch_first.get(b + 1)
+                cursor = nxt if nxt is not None else len(units)
+            else:
+                cursor = batch_first[b]          # 整批重发
+        else:
+            cursor = first[crashed.step]
+
+        res.writes += 1
+        res.ticks += WRITE_TICK
+        if res.ticks > deadline:
+            res.abandoned = True
+            break
+
+    for u in units:
+        if not u.is_effect:
+            continue
+        got = delivered[u.target]
+        if got == 0:
+            res.lost += 1
+        elif got > 1:
+            res.duplicates += got - 1
+    return res
