@@ -354,7 +354,7 @@ def build(toc_pages: dict[str, int] | None = None):
     for kind, payload in body:
         if kind == "h2":
             p = doc.add_paragraph(style="Heading 1")
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
             p.paragraph_format.space_before = Pt(0 if first_h2 else 24)
             p.paragraph_format.space_after = Pt(18)
             if payload.startswith("1.") or payload.startswith("10."):
