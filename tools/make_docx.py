@@ -388,6 +388,7 @@ def render_blocks(doc, blocks):
                     continue
                 p = doc.add_paragraph()
                 p.paragraph_format.left_indent = Cm(0.85)
+                p.paragraph_format.first_line_indent = Cm(0)
                 p.paragraph_format.line_spacing = 1.5
                 p.paragraph_format.space_before = Pt(0)
                 p.paragraph_format.space_after = Pt(0)
@@ -395,8 +396,8 @@ def render_blocks(doc, blocks):
         elif kind == "li":
             li_seq += 1
             p = doc.add_paragraph()
-            p.paragraph_format.left_indent = Cm(0.85)
-            p.paragraph_format.first_line_indent = Cm(0)
+            p.paragraph_format.left_indent = Cm(0)
+            p.paragraph_format.first_line_indent = Cm(0.85)
             p.paragraph_format.line_spacing = 1.5
             p.paragraph_format.space_before = Pt(0)
             p.paragraph_format.space_after = Pt(0)

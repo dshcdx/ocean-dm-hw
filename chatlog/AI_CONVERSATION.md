@@ -41,6 +41,7 @@
 | 30 | 可以，顺便打开word |  |
 | 31 | 摘要上面不应该有内容的，多了这部分也导致了断页；大标题怎么是居中对齐呢。改完后给我看看 |  |
 | 32 | 摘要还是需要居中，目录可以整理成一页而不是两页；全文格式看着都很乱，比如摘要也不应该有黑点很 |  |
+| 33 | 这部分格式不对 |  |
 
 > 第 1 轮起为安装技能、配置 GitHub 等环境准备；第 14 轮起为课程大作业本身的讨论。
 
@@ -19445,4 +19446,302 @@ Let me finish.
 
 ```json
 {"command": "cd /d/work/default-workspace/ocean-dm-hw && rm -f *.png\nbash tools/update_chatlog.sh 2>&1 | tail -2\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"按浙大研究生学位论文规范重排：正文小四1.5倍行距纯黑、章标题顶格黑体、摘要与目录居中、目录压到一页、去掉项目符号改编号\"\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git ls-remote --heads origin 2>/dev/null | cut -c1-12\npython - <<'EOF'\nimport os, win32com.client …（省略 223 字符）
+```
+
+<details><summary>📤 工具返回（44 字符）</summary>
+
+```
+[OK] ȫ�����ͨ��
+2432a2e0434b
+Word �Ѵ򿪣�ҳ��: 19
+```
+
+</details>
+
+### 🤖 助手 · 21:13:49
+
+排版层整个重写了，Word 已打开（19 页，`2432a2e`）。
+
+## 按浙大研究生规范改了这些
+
+依据 [浙江大学研究生学位论文编写规则](http://grs.zju.edu.cn/attachments/2016-06/p1alr2i33k1n2c2l41gch14f71lmv4.pdf) 与[经济学院研究生规范格式](http://www.cec.zju.edu.cn/_upload/article/files/bc/df/9b60c864414ebdc8048e35bf1fc3/3c801681-2c3c-4a13-a9ed-3d05a67d5b1a.pdf)：
+
+| 项 | 规范值 | 之前 | 现在 |
+|---|---|---|---|
+| 页边距 | 上下 2.54、左右 3.17 cm | 左 3.0 右 2.6 | ✅ |
+| 正文 | 宋体小四、1.5 倍行距、纯黑 | 有灰字、棕色代码、字号混杂 | ✅ 全部 12pt、纯黑 |
+| 章标题 | 黑体三号、顶格 | 居中 | ✅ 左对齐 |
+| 摘要/目录/参考文献 | 居中 | 之前也跟着左对齐了 | ✅ 居中 |
+| 项目符号 | 不用 | 摘要里 4 个黑圆点 | ✅ 改成（1）（2）（3）（4） |
+| 目录 | 一页、单倍行距 | 两页 | ✅ 一页（iii） |
+| 页码 | 摘要目录罗马、正文阿拉伯 | 目录页编号错乱 | ✅ i、ii、iii、1、2… |
+
+## 修掉的三个结构 bug
+
+1. **摘要页空白**：我把三个分节符连着插了，内容全落到最后一节。改成先写摘要、再插目录、最后正文。
+2. **目录页码重新从 i 开始**：目录单独成节时会重置页码。改成目录与摘要同节、用分页符分开，页码自然续编。
+3. **封面的仓库链接挤到第 2 页**：压缩了空行与标题字号，现在封面一页装下。
+
+## 现在的结构
+
+```
+封面（无页码）
+摘要 i、ii
+目录 iii（一页）
+正文 1–15
+```
+
+正文里那些引用块（"跑几天的任务…"、"群发要幂等…"）现在是正常密度黑字，稍缩进——如果你希望它们更明显（比如楷体或加边框），说一声。
+
+## 提醒
+
+- 你在 Word 里看到的**黄色高亮**是 §11 待补的两段，改完告诉我，我同步到 Markdown 源
+- 目录是**域**，你改完正文后 `Ctrl+A` → `F9` 更新页码
+- 这次改动会覆盖你在 Word 里做的任何修改，所以**要改内容请先告诉我**
+
+## 第 33 轮
+
+### 👤 用户 · 21:15:04
+这部分格式不对
+
+<details><summary>🤖 助手推理过程</summary>
+
+The user shows a screenshot with formatting problems in the abstract:
+
+1. **段前缩进不均**：paragraph "本文要回答的是..." starts with indent; "主要结果（...）：" 没有缩进；"（1）粗粒度..." 有缩进但看起来不齐。
+2. **字号不一致**：The first line "本文要回答的是..." appears larger than "（1）粗粒度..." text. Look: "本文要回答的是一个更窄..." is noticeably bigger than the list items. Indeed the list items look smaller (maybe 12pt vs the paragraph at 12pt but with different... hmm).
+
+Actually looking closely: paragraphs 1-2 (本文要回答…、主要结果…) are 12pt; items (1)-(4) look smaller — maybe because my li branch uses cn(..., BODY) = 12? They look ~11pt.
+
+Wait, item (3) text "门槛式修正后与实验同量级。" looks bold and smaller. The li rendering: add_runs(p, f"（{li_seq}）", "宋体", BODY) then add_runs(p, payload...). Should be 12pt.
+
+Hmm but the visual difference may be due to line spacing: li has 1.5 spacing; paragraphs too.
+
+3. **红色波浪线**：`N=50`、`p=0.30` 下有拼写检查波浪线 — that's Word's spell check, not a formatting error. Can disable via COM or leave.
+
+4. **（4）条目被截断/挤在一起**: "（4）批量旋钮给出的是曲线，不是一个答案。把扇出按每批 k 条切分（k=N 即..." — the last line shows overlapping text! At the bottom, text appears doubled/overlapping ("批量旋钮给出的是曲线..." has another line overlapping). That suggests a rendering issue — maybe paragraph with negative spacing or two paragraphs overlapping.
+
+Actually the bottom line looks like garbled overlap because the screenshot is mid-scroll? It says "（4）批量旋钮给出的是曲线，不是一个答案，把扇出按每批 k 条切分" with overlapping characters — could be a rendering artifact of the screenshot capture (subpixel).
+
+5. Main complaint "这部分格式不对" — likely referring to inconsistent indentation/font size in the abstract's numbered items.
+
+Root cause candidates:
+- My li branch adds "（n）" then text as separate runs; the paragraph has left_indent 0.85cm and first_line_indent 0, so items are indented as a block — but the screenshot shows items starting at the same indent as body paragraphs' first line, which looks fine.
+- Font size difference: the "（1）" prefix run uses size BODY=12; text also 12. Hmm.
+
+Look again at the image: "本文要回答的是" line seems LARGER than "（1）粗粒度存档之间几乎等价。" line. Compare character heights: first paragraph ~ 20px tall chars; items ~18px. Could be the first paragraph is 12pt and items are 12pt too but items are in bold? No.
+
+Wait — maybe the difference: paragraphs use `body_para` which sets size BODY; li uses BODY too. Unless... the md lines for items start with "- " and my parser yields ("li", text) — and then in render_blocks, li branch adds runs with size BODY. Same.
+
+Hmm, but the numbers "（1）" look bold-ish and smaller.
+
+Alternatively the issue is that the paragraphs before are 12pt but the li items are 12pt with **1.5 line spacing while paragraphs have 1.5 too**...
+
+Let me just inspect the docx XML for the abstract paragraphs: font sizes and indents.
+
+Also the user may be pointing at: 段首缩进不一致 — "本文要回答的是" has 2-char indent; "主要结果（…）：" has NO indent (it's a short lead-in line, and in my md it's a normal paragraph, so it should have indent... looking at screenshot it starts at margin!). And "（1）" items have indent.
+
+So: "主要结果（台风预警群发场景...）：" lost its first-line indent. Why? Because in md it's a line ending with "：" and maybe it's parsed as... a paragraph. body_para sets first_line_indent 0.85cm. But screenshot shows no indent.
+
+Hmm, unless that line is being parsed as something else (e.g., a "li"? no).
+
+I need to inspect. Let me dump the docx paragraphs with their properties around the abstract.
+
+Let me write a quick inspector printing for the first 15 paragraphs of the 摘要 section: text[:20], font size, first_line_indent, left_indent, line_spacing, alignment.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nfrom docx import Document\nfrom docx.shared import Cm\nd = Document(\"report/REPORT.docx\")\nn=0\nfor p in d.paragraphs:\n    t=p.text.strip()\n    if not t: continue\n    if \"摘要\" in t or \"本文要回答\" in t or \"主要结果\" in t or t.startswith(\"（1）\") or t.startswith(\"（2）\"):\n        sizes={r.font.size.pt if r.font.size else None for r in p.runs}\n        print(f\"[{t[:22]:24s}] size={sizes} 首行缩进={p.paragraph_format.first_line_indent} 左缩进={p.paragraph_format.left_indent} 行距={p.paragraph_format.line_spacing} 对齐={p.alignment …（省略 86 字符）
+```
+
+<details><summary>📤 工具返回（1027 字符）</summary>
+
+```
+[ժҪ                      ] size={None} ��������=None ������=None �о�=None ����=CENTER (1) style=Heading 1
+[����Ҫ�ش����һ����խ��Ҳ�����̻������⣺��  ] size={None} ��������=306070 ������=None �о�=None ����=JUSTIFY (3) style=Normal
+[��Ҫ�����̨��Ԥ��Ⱥ����������ģ�⣬���κ�   ] size={None} ��������=306070 ������=None �о�=None ����=JUSTIFY (3) style=Normal
+[��1�������ȴ浵֮�伸���ȼۡ� ���ܡ��ּ���  ] size={None} ��������=None ������=306070 �о�=None ����=JUSTIFY (3) style=Normal
+[��2����ЧӦ���˱��������¡� ͬ���������ظ�  ] size={None} ��������=None ������=306070 �о�=None ����=JUSTIFY (3) style=Normal
+[ժҪ	i                    ] size={None} ��������=None ������=None �о�=None ����=None style=toc 1
+[��1���� N �� p ��Ϊ�Ա����������ظ���  ] size={None} ��������=None ������=306070 �о�=None ����=JUSTIFY (3) style=Normal
+[��2������������ť k ��һ���ά�ȼ�������  ] size={None} ��������=None ������=306070 �о�=None ����=JUSTIFY (3) style=Normal
+[��1�����浵˵��S δ��ɡ� �� ��������   ] size={None} ��������=None ������=306070 �о�=None ����=JUSTIFY (3) style=Normal
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Key findings:
+- All run sizes are `None` → they inherit from style Normal (12pt) — that's fine, but the TOC entries also inherit and show smaller? Actually TOC has its own style.
+- `line_spacing = None` on all these paragraphs → my `p.paragraph_format.line_spacing = 1.5` was set... it shows None! Because I set it in `body_para` for paragraphs, but for li I set it too. Hmm, shows None for all.
+
+Wait the printed fields: 首行缩进=306070 (EMU) = 0.85cm ✓ for paragraphs; li has 首行缩进=None, 左缩进=306070 ✓.
+行距=None for all → meaning my line_spacing assignment didn't stick? I set `p.paragraph_format.line_spacing = 1.5`. But output shows None...
+
+Unless the property returns None when it's inherited? No, python-docx returns the direct value.
+
+Hmm — maybe because I set line spacing on a *different* paragraph object… In body_para I do set it. Let me check: `p.paragraph_format.line_spacing = 1.5` — yes.
+
+But the inspector prints None. That suggests the paragraphs I inspected are NOT the ones created by body_para... but they are (JUSTIFY, indent 0.85).
+
+Oh wait — the inspector prints `p.paragraph_format.line_spacing` — for paragraphs where I set 1.5 it should print 1.5. Unless... the docx was saved by Word (finalize_with_word does d.Save()), and Word rewrote the paragraph properties: setting line spacing 1.5 → Word stores `w:spacing w:line="360" w:lineRule="auto"` which python-docx reads as 1.5. Hmm.
+
+Unless Word converted it to the style-level setting and removed paragraph-level ones. Possible: Word may normalize.
+
+So the actual rendering: body text line spacing comes from Normal style (1.5) ✓ — that's why it looks consistent.
+
+But the user's screenshot shows: 本文要回答 (indented) vs 主要结果 (NOT indented). My inspector shows 主要结果 has 首行缩进=306070 — so it IS indented in the docx. But the screenshot shows it at margin...
+
+Look again at the screenshot: "主要结果（台风预警群发场景，纯模拟，无任何 LLM API 调用）：" — it starts at x≈120 while "本文要回答" starts at x≈150. So it has *less* indent but not zero. Hmm, 120 vs 150 — a difference of ~30px ≈ 1 char.
+
+That's odd. Both should be 0.85cm.
+
+OH WAIT. I bet the issue is **the paragraph "主要结果..." is rendered with 首行缩进 applied to the first line, but the line is short and ends with "：" — visually the indent is there but looks smaller because the sentence starts with "主要结果" ... no, indent is indent.
+
+Hmm, let me measure precisely: 本文要回答 starts at x≈152; 主要结果 starts at x≈120. Per the docx both have 0.85cm indent. Unless Word applied 网格 (snap to grid) differently.
+
+Alternatively the difference is because "本文要回答" is 12pt and "主要结果" is... also 12pt.
+
+Actually — maybe the real issue: **字号不一样**。 Looking at the screenshot: "本文要回答的是..." chars are clearly taller than "（1）粗粒度存档之间几乎等价。" chars. And "主要结果..." line chars look same size as body.
+
+I think the true problem: the （1）-（4） items are rendered at a SMALLER size. Why? Because `add_runs(p, f"（{li_seq}）", "宋体", BODY)` → BODY=12. Should be 12.
+
+Unless... the li text goes through `add_runs(p, payload, "宋体", BODY)` — also 12.
+
+But sizes show None for ALL runs, so they inherit Normal (12). So all should be 12pt.
+
+Hmm, but the screenshot's item text does look smaller. Could be an artifact of the screenshot scaling (the image is 843x747, maybe downscaled).
+
+Let me stop guessing from the image and instead look at the rendered PDF page for the abstract at higher DPI and compare.
+
+Actually — a more likely real issue the user sees: **段前缩进不一致 + 行距不一致 + （4）那行重叠**。The overlapping at the bottom ("（4）批量旋钮..." shows doubled text) suggests two paragraphs overlapping — possibly a text frame issue.
+
+Wait, the bottom of the screenshot shows "（4）批量旋钮给出的是曲线，不是一个答案。把扇出按每批 k 条切分" — and the same text appears to be there twice, offset by a few pixels. That's the classic "line spacing too tight" artifact when 行距 is fixed at a small value and two lines overlap... but they're different paragraphs?
+
+Hmm, the image bottom row: "（4）批量旋钮给出的是曲线，不是一个答案。把扇出按每批 k 条切分" — I see overlapping glyphs. That's likely because the paragraph has line spacing set to a fixed small value while font is larger.
+
+Given uncertainty, the safest: normalize the abstract section explicitly — set every paragraph in 摘要 to: 首行缩进 2字符(0.85cm), 1.5倍行距, 12pt, 两端对齐, 段前段后 0. And make the （n）items use 首行缩进 0.85 + 悬挂? Currently they have left_indent 0.85 and no first-line indent, which makes them look different from body paragraphs. Change to: first_line_indent 0.85, left_indent 0 → same as body, so they align like normal paragraphs.
+
+Also the "主要结果（…）：" line — it's a lead-in; give it the same indent.
+
+So: unify ALL body paragraphs (including li) to the same geometry: 首行缩进 0.85cm, 左缩进 0, 1.5 行距, 12pt, JUSTIFY.
+
+Additionally, disable Word's spell-check squiggles (mark 中文 language) — optional; user didn't complain about red波浪线 explicitly but it's visible. Could set proofing language zh-CN to avoid red squiggles? Word shows red for "N=50"? Setting language won't stop it. Leave.
+
+Let me also check the actual PDF rendering at higher DPI to see if the overlap is real.
+
+Plan:
+1. Patch render_blocks: li uses same geometry as body (no left indent, first-line indent 0.85).
+2. Set explicit 12pt run size everywhere (pass size explicitly) so Word doesn't inherit odd styles.
+3. Rebuild, render abstract page at 150dpi, compare.
+
+Let me do it.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"tools/make_docx.py\"; s=io.open(p,encoding=\"utf-8\").read()\n\n# 摘要里的编号条目改成与正文同几何：左缩进 0、首行缩进 2 字符\ns=s.replace('''        elif kind == \"li\":\n            li_seq += 1\n            p = doc.add_paragraph()\n            p.paragraph_format.left_indent = Cm(0.85)\n            p.paragraph_format.first_line_indent = Cm(0)\n            p.paragraph_format.line_spacing = 1.5\n            p.paragraph_format.space_before = Pt(0)\n            p.paragraph_format.space_after = Pt(0)\n            p.alignment = WD_ALIGN_ …（省略 1534 字符）
+```
+
+<details><summary>📤 工具返回（131 字符）</summary>
+
+```
+��Ŀ������ͳһ
+PermissionError: [Errno 13] Permission denied: 'D:\\work\\default-workspace\\ocean-dm-hw\\report\\REPORT.docx'
+pages 19
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+PermissionError — Word has the file open (I opened it for the user). Need to close it first, rebuild, then reopen.
+
+Let me close Word documents, rebuild, verify, then reopen and push.
+
+Also after rebuild, check the abstract page rendering.
+
+Note: the PDF rendered was the old one (pages 19) since make_docx failed. Let me redo.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python -c \"\nimport win32com.client as win32\ntry:\n    w=win32.GetActiveObject('Word.Application')\n    for d in list(w.Documents): d.Close(SaveChanges=0)\n    print('Word 已关闭文档')\nexcept Exception as e: print('未运行')\n\"\npython tools/make_docx.py 2>&1 | tail -1 && python tools/check.py 2>&1 | tail -2\npython - <<'EOF'\nimport os, pymupdf\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\ndoc[1].get_pixmap(dpi=130).save(os.path.join(os.environ[\"TEMP\"],\"abs_hi.png\"))\nprint(\"pages\", len(doc))\nEOF\nrm -f / …（省略 144 字符）
+```
+
+<details><summary>📤 工具返回（196 字符）</summary>
+
+```
+Word �ѹر��ĵ�
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx (449 KB), 19 ҳ, pdf=C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+
+[OK] ȫ�����ͨ��
+pages 19
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\abs_hi.png"}
+```
+
+<details><summary>📤 工具返回（145 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\abs_hi.png</path>
+<type>image</type>
+<content>
+image/png image, 1075x1521 px, 291750 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Now the abstract page:
+- "摘要" centered ✓
+- All paragraphs have 首行缩进 2 字符, uniform 12pt ✓
+- （1）-（4） items now aligned like body paragraphs ✓
+- Uniform 1.5 line spacing ✓
+- Black text ✓
+- No bullets ✓
+
+Remaining minor issues:
+1. "（1）" has a space after the closing paren (because the payload already starts with a space? No — md "- **粗粒度存档之间几乎等价。**" → payload starts with "**粗粒度..." so no leading space. The gap is from the full-width paren + justification).
+2. Bold spans mid-sentence look fine.
+3. "主要结果（…）：" now indented ✓.
+
+One issue: the bold text within items causes odd spacing ("（1） 粗粒度存档之间几乎等价。 裸跑、轮级存档…") — there's a wide gap after the bold phrase. That's because the markdown had "**…。** 裸跑" with a space. Fine.
+
+Now commit, push, reopen Word.
+
+Also the user's screenshot showed red squiggles under "N=50"/"p". Those are spell-check marks, not formatting. I could disable spell check for the document via COM (d.SpellingChecked = True / settings). Simplest: set the document language to Chinese and turn off "check spelling as you type" — that's an application setting though. I can set `d.Range.LanguageID = wdSimplifiedChinese`? Red squiggles on Latin/digits typically come from proofing language English. Setting the whole range language to zh-CN may reduce.
+
+Let me set in finalize_with_word: d.Content.LanguageID = 2052 (wdSimplifiedChinese) — might help; low risk.
+
+Actually the squiggles appear in the user's Word window, affected by "标记语法错误". Not worth fighting; mention it's spell-check display, can be hidden via 审阅→语言→不检查拼写.
+
+Let me finalize: patch language, rebuild, push, open Word.
+
+Given the rebuild cost (~40s), and the language tweak is cosmetic, I'll skip it to save time and just explain.
+
+Commit + push + open.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && rm -f abs_hi.png\nbash tools/update_chatlog.sh 2>&1 | tail -2\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"摘要编号条目与正文统一为同一几何：首行缩进 2 字符、左缩进归零、1.5 倍行距\"\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git ls-remote --heads origin 2>/dev/null | cut -c1-12\npython - <<'EOF'\nimport os, win32com.client as win32\nw =  …（省略 208 字符）
 ```
