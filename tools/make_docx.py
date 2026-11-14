@@ -184,6 +184,10 @@ def build_cover(doc):
     p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     cn(p.add_run(META["日期"]), "宋体", 14)
 
+    doc.add_paragraph()
+    p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    cn(p.add_run("代码与完整 AI 对话记录：https://github.com/DSHCDX/servo-valve"), "宋体", 9)
+
 
 def style_headings(doc):
     spec = {"Heading 1": (16, 24, 18, WD_ALIGN_PARAGRAPH.CENTER),

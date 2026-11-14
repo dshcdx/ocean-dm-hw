@@ -80,10 +80,11 @@ def main() -> None:
     out.append("> 会话 ID：`%s`　工作区：`D:\\work\\default-workspace`\n" % SESSION)
     out.append("> 本文由会话日志逐条导出。唯一改动：为保护隐私，邮箱地址替换为 `<QQ邮箱已隐去>`，"
                "其余用户与助手正文、推理过程、工具调用均未删改；"
-               "工具输出以 `<details>` 折叠保留原始内容。\n")
+               "工具输出以 `<details>` 折叠保留原始内容（仅极少数超过 2 万字符的输出标注了截断）。\n")
     out.append("> 时间均为北京时间（UTC+8）。\n\n---\n")
 
     turn = 0
+    nav: list[list] = []          # [轮次, 该轮用户第一句]
     pending_calls: dict[str, str] = {}
 
     for ev in events:
@@ -93,6 +94,7 @@ def main() -> None:
 
         if t == "turn/start":
             turn = d.get("turn", turn + 1)
+            nav.append([turn, ""])
             out.append(f"\n## 第 {turn} 轮\n")
 
         elif t == "user/message":
@@ -103,6 +105,8 @@ def main() -> None:
             text = clean(text)
             if not text:
                 continue
+            if nav and not nav[-1][1]:
+                nav[-1][1] = text.replace("\n", " ")[:46]
             out.append(f"\n### 👤 用户 · {when}\n")
             out.append(text + "\n")
 
@@ -140,7 +144,19 @@ def main() -> None:
             out.append(f"\n<details><summary>📤 工具返回（{len(text)} 字符）</summary>\n\n")
             out.append("```\n" + text[:20000] + ("\n…（超出 20000 字符截断）" if len(text) > 20000 else "") + "\n```\n\n</details>\n")
 
+    # 导航：标出真正的作业讨论从哪一轮开始
+    start = next((n for n, t in nav if "海洋数据挖掘" in t or "第3讲" in t), None)
+    guide = ["\n## 记录导航\n",
+             "| 轮次 | 该轮用户首句 | 说明 |\n", "|---|---|---|\n"]
+    for n, t in nav:
+        tag = "**作业开始**" if n == start else ""
+        guide.append(f"| {n} | {t or '（工具续跑）'} | {tag} |\n")
+    guide.append("\n> 第 1 轮起为安装技能、配置 GitHub 等环境准备；"
+                 f"第 {start} 轮起为课程大作业本身的讨论。\n\n---\n")
     md = "".join(out)
+    anchor = "\n## 第 1 轮\n"
+    if anchor in md:
+        md = md.replace(anchor, "".join(guide) + anchor, 1)
     # 隐私：邮箱替换为占位符（其余内容不动）
     md = md.replace("1610153802@qq.com", "<QQ邮箱已隐去>")
     md = md.replace("1610153802", "1610****02")
