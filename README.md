@@ -36,6 +36,16 @@ tools/export_chatlog.py  会话日志 → Markdown 的导出脚本
 
 生成命令：`python tools/make_docx.py`（需要本机装有 Word，用于插入目录域并导出校对 PDF）
 
+## 自检
+
+```bash
+python tools/check.py
+```
+
+会核对：表 3 每个数字与 `results/main_summary.csv` 是否一致、正文百分比能否由数据复算、
+参考文献引用是否闭合、图/表是否齐全且在正文被引用、docx 里有无 Markdown 残留与 ASCII 引号、
+报告链接与 git remote 是否一致、对话记录是否含导航且已脱敏。退出码非 0 即有问题。
+
 ## 复现
 
 ```bash
