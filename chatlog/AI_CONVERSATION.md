@@ -10031,3 +10031,374 @@ Let me run the final update.
 ```json
 {"command": "cd /d/work/default-workspace/ocean-dm-hw && bash tools/update_chatlog.sh 2>&1 | tail -1\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"更新对话记录（含排版规范这一轮）\"\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1\necho \"== 远端最新 ==\"; GIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git ls-remote --heads origin 2>/dev/null | head -2\necho \"== 网页可访问 ==\"; for u in https://github.com/DSHCDX/servo-valve/blob/main/repo …（省略 235 字符）
 ```
+
+<details><summary>📤 工具返回（268 字符）</summary>
+
+```
+已更新 chatlog/AI_CONVERSATION.md
+== 远端最新 ==
+4197a39b6e627dd56c0a617ddee2ed44b17faee9	refs/heads/main
+== 网页可访问 ==
+github.com/DSHCDX/servo-valve/blob/main/report/REPORT.docx               200
+raw.githubusercontent.com/DSHCDX/servo-valve/main/chatlog/AI_CONVERSATION.md 200
+```
+
+</details>
+
+### 🤖 助手 · 19:50:11
+
+格式重排和封面都做完了，也推上去了（最新提交 `4197a39`）。
+
+## 用的什么标准
+
+查到的校级规范是[《浙江大学本科生毕业论文（设计）编写规则》](https://physics.zju.edu.cn/_upload/article/files/1c/da/2b3e143048c1bc9d5b1463080656/8d0cd943-da5c-4abb-97d8-1be111f8b160.pdf)（依据 GB/T 7713.1—2006）。课程报告没有单独的校级模板，各学院一般沿用这套排版，我按它做的：
+
+| 项 | 设置 |
+|---|---|
+| 纸张/页边距 | A4，上下 2.54 cm、左 3.0 cm、右 2.6 cm |
+| 正文 | 宋体小四、1.5 倍行距、首行缩进 2 字符、两端对齐 |
+| 章标题 | 黑体三号居中（段前 24 磅、段后 18 磅） |
+| 节标题 | 黑体四号（段前 12 磅、段后 6 磅） |
+| 图题 | 图下、五号宋体居中 |
+| 表题 | 表上、五号黑体居中（补了表 1–表 6，原先只有 1 个有编号） |
+| 页码 | 页脚居中：封面不编码 → 摘要/目录用小写罗马数字 → 正文从 1 起 |
+| 参考文献 | GB/T 7714—2015 著录，正文加了 [1]–[5] 角标 |
+
+## 封面
+
+加了标准封面：**浙江大学**（黑体 34pt）→《海洋数据挖掘技术》课程大作业 / 实验报告 → 主标题 + 副标题 → 姓名/学号/学院/专业/指导教师信息表 → 2026 年 11 月。
+
+## 目录
+
+**不是手打的，是 Word 原生目录域**（TOC field）。好处是你改完内容后右键「更新域」页码自动刷新。共 20 页：封面 1 页 + 摘要 i + 目录 ii–iii + 正文 1–16。
+
+中间踩了两个坑，都修了：
+
+1. 一开始想自己算页码，结果把目录页当成了正文第一页，12 个条目全显示「1」——换成 Word 域后解决
+2. 摘要和正文原来挤在同一页，按规范加了分页；标题颜色也被 Word 默认样式带成蓝色，改成黑色了
+
+## 关于「每次对话都要更新」
+
+已经做成一条命令，以后每轮我都跑一遍：
+
+```bash
+bash tools/update_chatlog.sh    # 重新导出 → 覆盖 chatlog/AI_CONVERSATION.md
+```
+
+现在记录是 **16 轮、506 KB**，已经推送。你自己想更新也可以直接跑这条命令，然后 `git add -A && git commit && git push`。
+
+## 还剩两处要你填
+
+1. **封面的 `<姓名>` `<学号>` `<专业>` `<教师姓名>`** —— 我不知道，填在 `tools/make_docx.py` 顶部的 `META` 字典里，重跑一次就进封面（或者直接在 Word 里改，更快）
+2. **§11 AI 协作说明留白的那段** —— 你的选题动机，只有你能写
+
+另外提醒：`.docx` 里的目录域第一次打开时可能需要按 `Ctrl+A` → `F9` 更新一次，如果页码看着没变就不用管。
+
+## 第 17 轮
+
+### 👤 用户 · 19:52:11
+姓名：焦志圣  学号：12634142  专业：海洋技术与工程  教师姓名：张帆
+
+<details><summary>🤖 助手推理过程</summary>
+
+Fill in META and rebuild, then update chatlog + commit + push.
+
+META in tools/make_docx.py: 姓名 <姓名>, 学号 <学号>, 专业 <专业>, 指导教师 <教师姓名>. Also maybe 学院 海洋学院 (already).
+
+Let me patch, rebuild docx, verify cover quickly (render page 1), then update chatlog and push.
+
+Note: report/REPORT.md also has placeholders? I removed the meta block from md. The md may still mention? Let me check for <姓名> in md — probably gone. Fine.
+
+Let me do it.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\np = \"tools/make_docx.py\"\ns = open(p, encoding=\"utf-8\").read()\ns = s.replace('\"姓名\": \"<姓名>\"', '\"姓名\": \"焦志圣\"')\ns = s.replace('\"学号\": \"<学号>\"', '\"学号\": \"12634142\"')\ns = s.replace('\"专业\": \"<专业>\"', '\"专业\": \"海洋技术与工程\"')\ns = s.replace('\"指导教师\": \"<教师姓名>\"', '\"指导教师\": \"张帆\"')\nopen(p, \"w\", encoding=\"utf-8\").write(s)\nimport re\nprint(re.search(r\"META = \\{.*?\\}\", s, re.S).group(0))\nPY\npython tools/make_docx.py 2>&1 | tail -1", "timeoutMs": 900000}
+```
+
+<details><summary>📤 工具返回（333 字符）</summary>
+
+```
+META = {
+    "�γ�": "���������ھ���",
+    "����": "��־ʥ",
+    "ѧ��": "12634142",
+    "ѧԺ": "����ѧԺ",
+    "רҵ": "�������빤��",
+    "ָ����ʦ": "�ŷ�",
+    "����": "2026 �� 11 ��",
+}
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 658 KB; 20 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Console shows mojibake (GBK) but that's just display; the file is UTF-8. Let me verify the actual cover renders correct characters by rendering page 1 and reading the image.
+
+Then update chatlog and push.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nimport os, pymupdf\ndoc = pymupdf.open(os.path.join(os.environ[\"TEMP\"], \"REPORT_final.pdf\"))\ndoc[0].get_pixmap(dpi=95).save(os.path.join(os.environ[\"TEMP\"], \"cover.png\"))\n# 顺带用文字层核对，避免只看图漏掉乱码\nt = doc[0].get_text()\nimport re\nfor key in (\"焦志圣\", \"12634142\", \"海洋技术与工程\", \"张帆\"):\n    print(key, \"->\", \"OK\" if key in t else \"MISSING\")\nEOF\ncp \"$TEMP/cover.png\" /d/work/default-workspace/ocean-dm-hw/cover.png && echo copied", "timeoutMs": 300000}
+```
+
+<details><summary>📤 工具返回（59 字符）</summary>
+
+```
+��־ʥ -> OK
+12634142 -> OK
+�������빤�� -> OK
+�ŷ� -> OK
+copied
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\cover.png"}
+```
+
+<details><summary>📤 工具返回（142 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\cover.png</path>
+<type>image</type>
+<content>
+image/png image, 786x1111 px, 54157 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Cover is correct with real info. One cosmetic issue: the underline for values varies in length (焦志圣 short, 12634142 long). ZJU covers usually have a fixed-width underline. Could fix by setting cell borders bottom instead of run underline, or pad with spaces. Let me improve: use a bottom border on the value cell, which gives a uniform line.
+
+Implementation: for each value cell, set the cell's bottom border. Simpler: use a table with only bottom borders on the second column, width fixed (6.4cm).
+
+Let me implement via oxml: add w:tcBorders with bottom single.
+
+Also value text should be centered on the line.
+
+Is it worth another rebuild? It's a visible polish item on the cover they'll print. Yes, quick.
+
+Then: update chatlog, cleanup cover.png, commit, push.
+
+Let me patch the cover table:
+- c1 width 6.4cm, paragraph centered, run without underline
+- cell bottom border
+
+Then rebuild + verify + push.
+
+Also remove cover.png from workspace before commit.
+
+Let me write the patch.
+
+</details>
+
+### 🤖 助手 · 19:52:36
+
+封面信息已确认无误。还需要调整下划线，做成等宽。
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\np = \"tools/make_docx.py\"\ns = open(p, encoding=\"utf-8\").read()\n\ns = s.replace('''def cn(run, font=\"宋体\", size=12, bold=False, color=(0, 0, 0)):''',\n'''def cell_bottom_border(cell, sz=8):\n    \"\"\"给单元格加等宽下划线（比 run.underline 稳定，不随文字长度变化）。\"\"\"\n    tcPr = cell._tc.get_or_add_tcPr()\n    borders = tcPr.find(qn(\"w:tcBorders\"))\n    if borders is None:\n        borders = OxmlElement(\"w:tcBorders\")\n        tcPr.append(borders)\n    bottom = OxmlElement(\"w:bottom\")\n    bottom.set(qn(\"w:val\"), \"single\")\n  …（省略 1020 字符）
+```
+
+<details><summary>📤 工具返回（169 字符）</summary>
+
+```
+ok
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 658 KB; 20 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+20 pages
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\cover2.png"}
+```
+
+<details><summary>📤 工具返回（143 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\cover2.png</path>
+<type>image</type>
+<content>
+image/png image, 786x1111 px, 54151 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Now the underline is uniform width but the first row (姓名) lost its line — the table's first row bottom border seems missing? Looking closely: 姓名 row has no underline, others do. Because the first cell's border may be drawn but hidden? Actually the line under 姓名 is missing entirely.
+
+Hmm: the border appears below each row except the first. Possibly because the table has no borders and my bottom border applies to the cell; for row 1, the line might be there but the name text sits above... Looking at image: under 焦志圣 there's no line, under 12634142 there is. So row 1's border missing.
+
+Maybe because I add the border to c1 of each row but the last row's border extends below 张帆 — yes visible. So row 1's border just isn't rendering.
+
+Possible cause: duplicated tcBorders element appended after other elements violating schema order → Word drops. For row 1 it may conflict with... hmm.
+
+Simplest: instead of per-cell borders, set the whole table's inside/bottom borders? Or set the value cell's paragraph bottom border (pBdr) which is simpler and reliable.
+
+Alternative: replace underline with a fixed-width run of underscores? Ugly.
+
+Use paragraph border: add w:pBdr to the paragraph inside value cell. Let me do that instead.
+
+Actually — maybe the issue is that row 1's cell also has the header? No.
+
+Let me switch to paragraph bottom border (pBdr) which reliably renders under the paragraph text and spans the column width.
+
+Implementation: p1.paragraph_format... python-docx has no API; use oxml: add w:pBdr with bottom to pPr.
+
+Let me patch cell_bottom_border to add to paragraph instead.
+
+Also need spacing so border isn't flush with text: set pPr borders with space="1".
+
+Then rebuild and check.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\np = \"tools/make_docx.py\"\ns = open(p, encoding=\"utf-8\").read()\nold_start = s.index(\"def cell_bottom_border(\")\nold_end = s.index(\"def cn(run,\")\ns = s[:old_start] + '''def para_bottom_border(par, sz=8):\n    \"\"\"段落下框线：宽度跟随栏宽，比 run.underline 稳定。\"\"\"\n    pPr = par._p.get_or_add_pPr()\n    pBdr = pPr.find(qn(\"w:pBdr\"))\n    if pBdr is None:\n        pBdr = OxmlElement(\"w:pBdr\")\n        pPr.append(pBdr)\n    bottom = OxmlElement(\"w:bottom\")\n    bottom.set(qn(\"w:val\"), \"single\")\n    bottom.set(qn(\" …（省略 729 字符）
+```
+
+<details><summary>📤 工具返回（169 字符）</summary>
+
+```
+ok
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 658 KB; 20 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+20 pages
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\cover3.png"}
+```
+
+<details><summary>📤 工具返回（143 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\cover3.png</path>
+<type>image</type>
+<content>
+image/png image, 786x1111 px, 54175 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Still 姓名 row has no underline. All others do. Curious — maybe the first row's paragraph border is being suppressed because the paragraph is the first in the cell and Word collapses? Or because the border is drawn but the following paragraph in the next row overlaps... no, rows 2-5 have lines.
+
+Hypothesis: the first row's cell paragraph might be the one where `p1` variable... In build_cover loop, rows list starts with ("姓　　名", ...). p1 is same for all. So why only row 1?
+
+Maybe the line IS there but hidden behind the row's top border of row 2? No, there's clear space.
+
+Could it be that the underline for row 1 is drawn but the image is cropped? No.
+
+Wait — look closely: under 焦志圣 there is a faint line? The image shows 姓名: 焦志圣 with no line, then a line above 12634142. Actually the line above 12634142 could be row 1's bottom border! Because each cell's paragraph border sits at the bottom of its paragraph, which is at the *top* of the row's remaining space... Hmm. If the border appears immediately below the text of row 1, then it would look attached to row 2's text above it.
+
+Looking at the image: line sits just above "12634142" — that's likely row 1's bottom border. And the final line below 张帆 is row 5's. So all 5 lines exist, but they're positioned at the bottom of each row, appearing visually as "above the next value". Because the row height has padding below the text, the line lands between rows.
+
+That's actually a common cover look (line under each blank), but here the text sits above the line rather than on it, so it reads as "values floating above lines" — acceptable? For 姓名 the line is between 焦志圣 and 12634142, which reads like the line belongs to 学号 row... ambiguous.
+
+Better: reduce row spacing so the border hugs the text, or set paragraph space_after=0 and cell margins small.
+
+Simplest fix: set the table style to no borders, and put the underline directly under text via a bottom border with space=0 and make row height compact (set cell margins to 0, paragraph spacing 0). Then line sits right below the text.
+
+Alternatively use a run of underscores in a monospace-ish width — ugly.
+
+Let me set: for each value paragraph: space_before=0, space_after=0, line_spacing=1.0, and cell margins (top/bottom) = 0.02cm. Also add a small space_after between rows via table row spacing... simpler: add space_after=6pt to the *label* cells? Hmm.
+
+Pragmatic: accept as is? The visual is a bit off — values appear floating.
+
+Let me try: p1.paragraph_format.space_after = Pt(0); space_before = Pt(0); and set cell vertical alignment bottom; then the border hugs text. Row gaps then come from table cell margins. Add table row spacing via `table.rows[i].height`.
+
+Actually to get the classic look: text sits ON the line, with spacing between rows. Achieve by: value paragraph border with space="1", paragraph space_after=Pt(6) → space_after is below the border? In Word, paragraph border is drawn at the bottom of the paragraph's text area, before spacing? I believe border surrounds text extent including spacing? Word draws pBdr around the paragraph including space_before/after within the border box... Actually w:space controls distance from text.
+
+Simplest robust approach: keep border, set space_after=Pt(4) on the paragraph — the border will be below the text and above the spacing.
+
+Let me test quickly: set p1 space_before=0, space_after=Pt(4), line_spacing=1.
+
+Rebuild & look. If still odd, accept (minor).
+
+Given time, do one attempt.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\np = \"tools/make_docx.py\"\ns = open(p, encoding=\"utf-8\").read()\ns = s.replace('''        p1 = c1.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.CENTER\n        r = p1.add_run(v)\n        cn(r, \"宋体\", 14)\n        para_bottom_border(p1)''',\n'''        p1 = c1.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.CENTER\n        p1.paragraph_format.space_before = Pt(0)\n        p1.paragraph_format.space_after = Pt(2)\n        p1.paragraph_format.line_spacing = 1.0\n        r = p1.add_run(v)\n        cn(r, \"宋体\", 14)\n  …（省略 498 字符）
+```
+
+<details><summary>📤 工具返回（160 字符）</summary>
+
+```
+ok
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx 658 KB; 20 ҳ; pdf: C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\cover4.png"}
+```
+
+<details><summary>📤 工具返回（143 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\cover4.png</path>
+<type>image</type>
+<content>
+image/png image, 910x1287 px, 64163 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Now the cover looks like the classic style: 姓名 line just below 焦志圣, value sits above its line. Well, the 姓名 line is now directly under 焦志圣 — good. The remaining ones: 学号 line is under 12634142? Looking: "学 号: ______12634142______" hmm the line appears above 12634142 and below it. Let me look: rows show label, then a line, then value, then line? e.g. "姓 名： 焦志圣" with line under 焦志圣 (at y~735). Then "学 号：" with line at ~735-740 and value 12634142 at ~763 with line at ~790.
+
+Hard to tell. It looks acceptable: each value sits above a line, though the line for 姓名 is right at 焦志圣's baseline.
+
+Good enough — this is a cover; user can tweak in Word.
+
+Now finish: remove cover4.png, update chatlog, commit, push, and reply.
+
+Also update META note in README? Not needed.
+
+Let me run final: cleanup, chatlog, commit, push, verify.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && rm -f *.png && bash tools/update_chatlog.sh 2>&1 | tail -1\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A\ngit -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"封面填入姓名/学号/专业/指导教师；下划线改为段落框线；更新对话记录\"\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1\necho \"== 远端 ==\"; GIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git ls-remote --heads origin 2>/dev/null\necho \"== 状态 ==\"; git log --oneline | head -2; git status --sho …（省略 35 字符）
+```

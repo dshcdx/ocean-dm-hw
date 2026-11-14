@@ -39,11 +39,11 @@ GREEK = {
 
 META = {
     "课程": "海洋数据挖掘技术",
-    "姓名": "<姓名>",
-    "学号": "<学号>",
+    "姓名": "焦志圣",
+    "学号": "12634142",
     "学院": "海洋学院",
-    "专业": "<专业>",
-    "指导教师": "<教师姓名>",
+    "专业": "海洋技术与工程",
+    "指导教师": "张帆",
     "日期": "2026 年 11 月",
 }
 
@@ -57,6 +57,21 @@ def latex_to_text(s: str) -> str:
     s = re.sub(r"\\[a-zA-Z]+\{?", "", s)
     s = s.replace("{", "").replace("}", "").replace("\\", "")
     return re.sub(r"\s{2,}", " ", s).strip()
+
+
+def para_bottom_border(par, sz=8):
+    """段落下框线：宽度跟随栏宽，比 run.underline 稳定。"""
+    pPr = par._p.get_or_add_pPr()
+    pBdr = pPr.find(qn("w:pBdr"))
+    if pBdr is None:
+        pBdr = OxmlElement("w:pBdr")
+        pPr.append(pBdr)
+    bottom = OxmlElement("w:bottom")
+    bottom.set(qn("w:val"), "single")
+    bottom.set(qn("w:sz"), str(sz))
+    bottom.set(qn("w:space"), "1")
+    bottom.set(qn("w:color"), "000000")
+    pBdr.append(bottom)
 
 
 def cn(run, font="宋体", size=12, bold=False, color=(0, 0, 0)):
@@ -156,10 +171,13 @@ def build_cover(doc):
         c0.width, c1.width = Cm(4.2), Cm(6.4)
         p0 = c0.paragraphs[0]; p0.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         cn(p0.add_run(k + "："), "宋体", 14)
-        p1 = c1.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        p1 = c1.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p1.paragraph_format.space_before = Pt(0)
+        p1.paragraph_format.space_after = Pt(2)
+        p1.paragraph_format.line_spacing = 1.0
         r = p1.add_run(v)
         cn(r, "宋体", 14)
-        r.font.underline = True
+        para_bottom_border(p1)
 
     for _ in range(2):
         doc.add_paragraph()
