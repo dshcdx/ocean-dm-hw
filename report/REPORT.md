@@ -109,7 +109,7 @@ $$
 令 $\alpha\mathbb{E}[D]>\beta\cdot 2N$：
 
 $$
-\boxed{\ \frac{\alpha}{\beta}>\frac{4(N+5)}{p(N+1)}\ }\tag{1}
+\boxed{\ \frac{\alpha}{\beta}>\frac{4(N+5)}{p(N+1)}\ }
 $$
 
 形状上，门槛随 $N$ 与 $p$ 单调下降。$N=1$ 时退化为 $12/p$（$p=0.15$ 时约 80），$N=50$、$p=0.30$ 时约 14.4。
@@ -243,7 +243,7 @@ $N=1$、$p=0.30$ 时：S2 重复 0.037、写入 6.15；S4 重复 0.025、写入 
 重复近似正比于 $k$（比例常数 $c\approx0.12$），写入是 $2N/k$ 的**定义式**而非观测。于是带权代价有内点最优：
 
 $$
-k^*\approx\sqrt{\frac{2\beta N}{\alpha c}}\tag{2}
+k^*\approx\sqrt{\frac{2\beta N}{\alpha c}}
 $$
 
 代入不同代价比（用表 6 的离散网格求解）：

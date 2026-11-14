@@ -45,9 +45,13 @@ META = {
 
 CENTERED_H1 = ("摘要", "目录", "参考文献", "致谢", "附录")
 
-GREEK = {r"\alpha": "α", r"\beta": "β", r"\approx": "≈", r"\cdot": "·",
-         r"\times": "×", r"\gg": "≫", r"\ge": "≥", r"\le": "≤",
-         r"\mathbb{E}": "E", r"\quad": "  ", r"\,": " "}
+GREEK = {r"\alpha": "α", r"\beta": "β", r"\gamma": "γ", r"\delta": "δ",
+         r"\omega": "ω", r"\lambda": "λ", r"\eta": "η", r"\mu": "μ",
+         r"\sigma": "σ", r"\theta": "θ", r"\rho": "ρ", r"\tau": "τ",
+         r"\approx": "≈", r"\cdot": "·", r"\times": "×", r"\gg": "≫",
+         r"\ge": "≥", r"\le": "≤", r"\ne": "≠", r"\in": "∈",
+         r"\max": "max", r"\min": "min", r"\mathbb{E}": "E",
+         r"\quad": "  ", r"\,": " "}
 
 
 def latex_to_text(s: str) -> str:
@@ -205,6 +209,33 @@ def style_headings(doc):
         st.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
 
+def three_line(table):
+    """三线表：顶线、表头下线、底线；无竖线、无内部横线。"""
+    tblPr = table._tbl.tblPr
+    for old in tblPr.findall(qn("w:tblBorders")):
+        tblPr.remove(old)
+    borders = OxmlElement("w:tblBorders")
+    for edge, sz in (("top", 12), ("left", 0), ("bottom", 12),
+                     ("right", 0), ("insideH", 0), ("insideV", 0)):
+        el = OxmlElement(f"w:{edge}")
+        el.set(qn("w:val"), "single" if sz else "none")
+        el.set(qn("w:sz"), str(sz or 0))
+        el.set(qn("w:space"), "0")
+        el.set(qn("w:color"), "000000")
+        borders.append(el)
+    tblPr.append(borders)
+
+
+def header_bottom(row):
+    for cell in row.cells:
+        tcPr = cell._tc.get_or_add_tcPr()
+        b = OxmlElement("w:tcBorders")
+        el = OxmlElement("w:bottom")
+        el.set(qn("w:val"), "single"); el.set(qn("w:sz"), "6")
+        el.set(qn("w:space"), "0"); el.set(qn("w:color"), "000000")
+        b.append(el); tcPr.append(b)
+
+
 def add_table(doc, rows):
     table = doc.add_table(rows=1, cols=len(rows[0]))
     table.style = "Table Grid"
@@ -214,12 +245,51 @@ def add_table(doc, rows):
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.line_spacing = 1.0
         add_runs(p, latex_to_text(cell) if "$" in cell else cell, "宋体", 10.5, True)
+    header_bottom(table.rows[0])
     for row in rows[1:]:
         cells = table.add_row().cells
         for i, cell in enumerate(row[: len(rows[0])]):
             p = cells[i].paragraphs[0]
             p.paragraph_format.line_spacing = 1.0
             add_runs(p, latex_to_text(cell) if "$" in cell else cell, "宋体", 10.5)
+    three_line(table)
+
+    # 版式：整表 100% 宽 + 自适应列宽 + 表头跨页重复 + 行内不断页
+    tblPr = table._tbl.tblPr
+    for old_w in tblPr.findall(qn("w:tblW")):
+        tblPr.remove(old_w)
+    tw = OxmlElement("w:tblW"); tw.set(qn("w:type"), "pct"); tw.set(qn("w:w"), "5000")
+    tblPr.append(tw)
+    layout = OxmlElement("w:tblLayout"); layout.set(qn("w:type"), "autofit")
+    tblPr.append(layout)
+
+    hdr = table.rows[0]._tr.get_or_add_trPr()
+    th = OxmlElement("w:tblHeader"); th.set(qn("w:val"), "true"); hdr.append(th)
+    for r in table.rows:
+        trPr = r._tr.get_or_add_trPr()
+        cs = OxmlElement("w:cantSplit"); cs.set(qn("w:val"), "true"); trPr.append(cs)
+        for c in r.cells:
+            c.vertical_alignment = 1
+
+    # 按显示宽度分配列宽（中文按 2 个字符算），避免把短词挤断
+    def disp_width(t: str) -> int:
+        return sum(2 if ord(ch) > 127 else 1 for ch in str(t))
+
+    widths = []
+    for i in range(len(rows[0])):
+        longest = max(disp_width(row[i]) if i < len(row) else 0 for row in rows)
+        widths.append(max(longest, 6))
+    total = sum(widths) or 1
+    for i, w in enumerate(widths):
+        cm = max(1.6, 14.2 * w / total)
+        for row in table.rows:
+            row.cells[i].width = Cm(cm)
+
+    for r in table.rows[:-1]:
+        for c in r.cells:
+            for p_ in c.paragraphs:
+                p_.paragraph_format.keep_with_next = True
+
     sp = doc.add_paragraph()
     sp.paragraph_format.space_after = Pt(6)
 
@@ -346,11 +416,15 @@ def build():
 
 def render_blocks(doc, blocks):
     li_seq = 0
-    prev_kind = None
+    cur_chapter = "1"
+    eq_seq = 0
     for kind, payload in blocks:
         if kind != "li":
             li_seq = 0
         if kind == "h2":
+            m = re.match(r"(\d+)\.", payload)
+            if m:
+                cur_chapter, eq_seq = m.group(1), 0
             p = doc.add_paragraph(style="Heading 1")
             text = latex_to_text(payload) if "$" in payload else payload
             p.alignment = (WD_ALIGN_PARAGRAPH.CENTER
@@ -407,9 +481,16 @@ def render_blocks(doc, blocks):
             add_runs(p, f"（{li_seq}）", "宋体", BODY, strip_bold=True)
             add_runs(p, latex_to_text(payload) if "$" in payload else payload, "宋体", BODY, strip_bold=True)
         elif kind == "formula":
-            p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            eq_seq += 1
+            p = doc.add_paragraph()
             p.paragraph_format.line_spacing = 1.5
+            p.paragraph_format.space_before = Pt(6)
+            p.paragraph_format.space_after = Pt(6)
+            p.paragraph_format.tab_stops.add_tab_stop(Cm(7.0), WD_TAB_ALIGNMENT.CENTER)
+            p.paragraph_format.tab_stops.add_tab_stop(Cm(14.3), WD_TAB_ALIGNMENT.RIGHT)
+            cn(p.add_run("\t"), "宋体", BODY)
             cn(p.add_run(latex_to_text(payload)), "宋体", BODY)
+            cn(p.add_run(f"\t（{cur_chapter}.{eq_seq}）"), "宋体", BODY)
         else:
             text = payload
             if text.startswith("[待补]"):

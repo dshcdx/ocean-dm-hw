@@ -43,6 +43,7 @@
 | 32 | 摘要还是需要居中，目录可以整理成一页而不是两页；全文格式看着都很乱，比如摘要也不应该有黑点很 |  |
 | 33 | 这部分格式不对 |  |
 | 34 | 摘要的内容以及正文不用加粗字体，摘要简化成一页 |  |
+| 35 | 公式标序号，表格还需美化， |  |
 
 > 第 1 轮起为安装技能、配置 GitHub 等环境准备；第 14 轮起为课程大作业本身的讨论。
 
@@ -20016,4 +20017,531 @@ Then summarize: 摘要一页、正文无粗体、页数 18.
 
 ```json
 {"command": "cd /d/work/default-workspace/ocean-dm-hw && rm -f a3.png\nbash tools/update_chatlog.sh 2>&1 | tail -2\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"摘要压缩到一页；正文与摘要内容取消加粗；补文献引用标记\"\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git ls-remote --heads origin 2>/dev/null | cut -c1-12\npython - <<'EOF'\nimport os, win32com.client as win32\nw = win32.Dispatch(\" …（省略 191 字符）
+```
+
+<details><summary>📤 工具返回（44 字符）</summary>
+
+```
+[OK] ȫ�����ͨ��
+5fb035a73045
+Word �Ѵ򿪣�ҳ��: 18
+```
+
+</details>
+
+### 🤖 助手 · 21:21:36
+
+改好了，Word 已打开（18 页，`5fb035a`）。
+
+## 两处改动
+
+**① 摘要压到一页**
+
+原来 4 条贡献都写成了完整段落，撑到两页。现在压成：
+
+- 第 1 段：背景 + 本文问什么（3 句）
+- 第 2 段：方法一句
+- （1）—（4）：每条 2–3 句，只留关键数字
+- 关键词 + 仓库链接
+
+全文约 750 字，正好一页（页码 `i`）。
+
+**② 正文和摘要内容都不再加粗**
+
+原来正文里有大量 `**……**`（比如“存档点和唯一编号”“断崖”“门槛决定要不要上账本”这些强调），现在渲染时一律按常规字重处理。**标题仍然是黑体加粗**（章标题、节标题），表格表头也保持加粗——这两类不属于“正文内容”。
+
+## 现在的结构
+
+```
+封面（无页码）
+摘要  i          ← 一页
+目录  ii         ← 一页
+正文  1–15
+```
+
+## 顺手补的
+
+摘要压缩时把 `[1][2][3]` 三个文献标记弄丢了，自检立刻报「参考文献未在正文被引用」——已经补回到 §2.1 的三处（Li、UndoBench、Madan 各自那句末尾）。这个检查现在挺管用。
+
+## 剩下
+
+- **§11 两处黄色高亮**等你填
+- 目录是域，改动正文后 `Ctrl+A` → `F9` 更新页码
+- 如果你还要调（比如引用块想用楷体区分、章标题想再大一号），说具体哪种，我改生成器
+
+## 第 35 轮
+
+### 👤 用户 · 21:23:44
+公式标序号，表格还需美化，
+
+<details><summary>🤖 助手推理过程</summary>
+
+User wants:
+1. 公式标序号 — formulas should be numbered (e.g., （1）（2）). Currently formulas are rendered centered without numbers. ZJU spec: 数学式居中书写，并用阿拉伯数字分章编号，如 (2.1)。
+2. 表格还需美化 — prettify tables (three-line table 三线表 is the academic standard; ZJU/GB recommends 三线表).
+
+Implementation:
+
+**Formulas**: In the md, formulas are `$$...$$` blocks. I need to add equation numbers. Approach: in make_docx, when rendering a formula, add a right-aligned tab with "（n）" or use a 3-column borderless approach: center formula + right-aligned number.
+
+Best: use a paragraph with tab stops: center tab at 7.5cm (page center) and right tab at 14.66cm (text width). Render as `\t<formula>\t(n)`.
+
+Text width = 21 - 3.17*2 = 14.66 cm.
+
+So: p.paragraph_format.tab_stops.add_tab_stop(Cm(7.33), CENTER); add_tab_stop(Cm(14.66), RIGHT).
+Then runs: tab, formula, tab, (n).
+
+Numbering: sequential across the document, e.g., （1）（2）… or chapter-based (2.1). ZJU says 分章编号 like (2.1). Our sections are 1..11; formulas appear in §3.3 (two), §5.5 (one), §6? Let me use chapter-based: (3.1), (3.2), (5.1). That requires tracking current chapter.
+
+Which formulas exist? grep `$$`:
+- §3.3: E[D]≈..., W账本=2N, and the boxed threshold (3 formulas? Actually one display block with E[D] and W, then boxed)
+- §5.5: k* formula
+Let me check.
+
+Also inline formulas in text — no numbering.
+
+**Tables 三线表**: Convert Table Grid to 三线表: top border thick (1.5pt), header bottom border (0.75pt), bottom border thick; no vertical lines, no inner horizontal lines. Implement by setting table borders via XML: remove all, add top/bottom/insideH for header row only.
+
+Implementation: after creating table, set tblBorders: top (single, sz 12), bottom (single, sz 12), insideH none, insideV none, left/right none. Then set header row's bottom border (sz 6).
+
+Also maybe add cell padding and font 10.5.
+
+Let me implement:
+```python
+def three_line(table, header_row):
+    tbl = table._tbl
+    tblPr = tbl.tblPr
+    borders = OxmlElement('w:tblBorders')
+    for edge in ('top','bottom'):
+        el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'12'); el.set(qn('w:space'),'0'); el.set(qn('w:color'),'000000'); borders.append(el)
+    for edge in ('left','right','insideH','insideV'):
+        el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'none'); el.set(qn('w:sz'),'0'); el.set(qn('w:space'),'0'); el.set(qn('w:color'),'auto'); borders.append(el)
+    tblPr.append(borders)
+```
+Order in tblBorders matters per schema: top, left, bottom, right, insideH, insideV. Let me construct in that order.
+
+For header row bottom border: set tcBorders on each header cell bottom.
+
+Also need table style "Table Grid" replaced with no style (or keep style but borders override). Since we set explicit borders, remove style to avoid extra borders: table.style = None? python-docx default style may add. Let me set `table.style = 'Normal Table'` or just remove the style assignment and rely on borders.
+
+Let me write the changes, rebuild, verify a table page and a formula page.
+
+Also equations might need the numbering to not wrap awkwardly — with tab stops it should be fine.
+
+Let me check which formulas exist first.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && grep -n '^\\$\\$' report/REPORT.md | head; echo \"---\"; grep -c '^|' report/REPORT.md"}
+```
+
+<details><summary>📤 工具返回（60 字符）</summary>
+
+```
+95:$$
+97:$$
+105:$$
+107:$$
+111:$$
+113:$$
+245:$$
+247:$$
+---
+74
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && sed -n '93,116p;243,250p' report/REPORT.md"}
+```
+
+<details><summary>📤 工具返回（827 字符）</summary>
+
+```
+### 3.3 代价模型与门槛
+
+$$
+C=\alpha\cdot D+\beta\cdot W+\gamma\cdot L
+$$
+
+$D$ 重复条数、$W$ 持久化写入次数、$L$ 漏发条数；$\alpha,\beta,\gamma$ 分别为三者的单位代价。
+
+为什么必须写进 $L$：本文的 $D$ 与 $L$ 呈反向权衡（粗粒度策略重复少一点、漏发多一点，见 §5.1 与 §5.4），只算 $\alpha D+\beta W$ 会系统偏向“少重复”的策略。
+
+**门槛推导**（$\gamma=0$ 的特例）。设崩溃概率 $p$，扇出占 $N$ 个工作单元、其余步骤占 **5** 个（decide / query / compose / archive / summarize 各一个），则崩溃落在扇出内部的比例约 $pN/(N+5)$；崩溃位置均匀，已发条数期望 $(N+1)/2$。故
+
+$$
+\mathbb{E}[D]\approx\frac{pN}{N+5}\cdot\frac{N+1}{2},\qquad W_{\text{账本}}=2N
+$$
+
+令 $\alpha\mathbb{E}[D]>\beta\cdot 2N$：
+
+$$
+\boxed{\ \frac{\alpha}{\beta}>\frac{4(N+5)}{p(N+1)}\ }\tag{1}
+$$
+
+形状上，门槛随 $N$ 与 $p$ 单调下降。$N=1$ 时退化为 $12/p$（$p=0.15$ 时约 80），$N=50$、$p=0.30$ 时约 14.4。
+
+重复近似正比于 $k$（比例常数 $c\approx0.12$），写入是 $2N/k$ 的**定义式**而非观测。于是带权代价有内点最优：
+
+$$
+k^*\approx\sqrt{\frac{2\beta N}{\alpha c}}\tag{2}
+$$
+
+代入不同代价比（用表 6 的离散网格求解）：
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Formulas:
+1. §3.3: C = αD + βW + γL  → (3.1)
+2. §3.3: E[D] ≈ ..., W = 2N → (3.2)
+3. §3.3: boxed threshold → currently has \tag{1} → should be (3.3)
+4. §5.5: k* formula → \tag{2} → should be (5.1)
+
+So numbering by chapter: (3.1), (3.2), (3.3), (5.1).
+
+Implementation:
+- Remove `\tag{1}` / `\tag{2}` from md (they render as garbage).
+- In make_docx, number formulas sequentially per chapter: track current h2 number (e.g., "3."), count formulas in it.
+
+Parsing: h2 text like "3. 问题形式化与三个贡献" → chapter = "3". Formula counter resets per chapter.
+
+Render: tab-stops approach.
+
+Let me also check that `\tag{1}` currently renders as "tag1" garbage — remove it.
+
+Table beautification: 三线表.
+
+Let me implement both in make_docx.py, and edit md to drop \tag.
+
+Steps:
+1. md: remove `\tag{1}` and `\tag{2}`.
+2. make_docx: 
+   - add `three_line(table)` 
+   - add formula numbering with tab stops
+   - track chapter in render_blocks (on h2, set cur_chapter)
+3. Rebuild, verify formula page + table page.
+
+Let me write the patch.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"report/REPORT.md\"; s=io.open(p,encoding=\"utf-8\").read()\ns=s.replace(r\"\\tag{1}\",\"\").replace(r\"\\tag{2}\",\"\")\nio.open(p,\"w\",encoding=\"utf-8\").write(s)\nprint(\"已去掉 tag 标记:\", r\"\\tag\" in s)\nPY\npython - <<'PY'\nimport io\np=\"tools/make_docx.py\"; s=io.open(p,encoding=\"utf-8\").read()\n\n# 1) 三线表\ns=s.replace('''def add_table(doc, rows):\n    table = doc.add_table(rows=1, cols=len(rows[0]))\n    table.style = \"Table Grid\"''',\n'''def three_line(table):\n    \"\"\"三线表：顶线、表头下线、底线；无竖线、无内部 …（省略 2113 字符）
+```
+
+<details><summary>📤 工具返回（32 字符）</summary>
+
+```
+��ȥ�� tag ���: False
+���߱��Ѽ�
+ok
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Now formula numbering. Patch render_blocks:
+- track cur_chapter (from h2 text prefix before "."), reset formula counter per chapter.
+- formula rendering: tab stops center 7.33cm, right 14.66cm; runs: \t formula \t （chapter.n）
+
+Tab stops in python-docx: p.paragraph_format.tab_stops.add_tab_stop(Cm(7.33), WD_TAB_ALIGNMENT.CENTER).
+
+Then p.add_run("\t") + formula run + p.add_run("\t（3.1）").
+
+Let me patch the formula branch. Current:
+```
+        elif kind == "formula":
+            p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.paragraph_format.line_spacing = 1.5
+            cn(p.add_run(latex_to_text(payload)), "宋体", BODY)
+```
+
+Replace with numbering logic. Also need `cur_chapter` variable initialized and updated in the h2 branch.
+
+Let me implement.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"tools/make_docx.py\"; s=io.open(p,encoding=\"utf-8\").read()\n\n# 初始化章节与公式计数器\ns=s.replace('''    li_seq = 0\n    prev_kind = None''','''    li_seq = 0\n    cur_chapter = \"1\"\n    eq_seq = 0''')\n\n# h2 时更新当前章号并重置公式计数\ns=s.replace('''        if kind == \"h2\":\n            p = doc.add_paragraph(style=\"Heading 1\")''','''        if kind == \"h2\":\n            m = re.match(r\"(\\\\d+)\\\\.\", payload)\n            if m:\n                cur_chapter, eq_seq = m.group(1), 0\n            p = doc.add_paragra …（省略 1289 字符）
+```
+
+<details><summary>📤 工具返回（209 字符）</summary>
+
+```
+��ʽ����Ѽ�
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx (454 KB), 18 ҳ, pdf=C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+���� 27 KB / docx 454 KB
+
+[OK] ȫ�����ͨ��
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'EOF'\nimport os, pymupdf\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\nprint(\"pages\", len(doc))\nfor i,pg in enumerate(doc):\n    t=pg.get_text()\n    if \"（3.1）\" in t or \"（3.\" in t:\n        pg.get_pixmap(dpi=110).save(os.path.join(os.environ[\"TEMP\"],\"eq.png\")); print(\"公式页\", i+1); break\nfor i,pg in enumerate(doc):\n    if \"表 4\" in pg.get_text() and \"S0\" in pg.get_text():\n        pg.get_pixmap(dpi=110).save(os.path.join(os.environ[\"TEMP\"],\"tab.png\")); print(\"表格页\", i+1); bre …（省略 119 字符）
+```
+
+<details><summary>📤 工具返回（26 字符）</summary>
+
+```
+pages 18
+��ʽҳ 6
+����ҳ 8
+ok
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\eq.png"}
+```
+
+<details><summary>📤 工具返回（140 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\eq.png</path>
+<type>image</type>
+<content>
+image/png image, 910x1287 px, 177772 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Formula numbering works: (3.1), (3.2) right-aligned. 
+
+But there are problems on this page:
+1. **Inline math is being mangled**: "规则 1（键派生）k_ij=hash(...)" fine, but "规则 3（水位线）维护 =j:ack(e_j)恢复时从 +1 继续" — the ω and ω+1 disappeared! Because latex_to_text strips `\omega` → my GREEK map has no \omega now (I removed it in the rewrite: GREEK has alpha, beta, approx, cdot, times, gg, ge, le, mathbb{E}, quad). So `\omega` → stripped by `re.sub(r"\\[a-zA-Z]+\{?", "", s)` → empty. Same for `\max`.
+   Also "门槛推导（=0 的特例）" — `$\gamma=0$` → γ missing! GREEK lacks \gamma → stripped.
+   And "N-k 个丢失" fine.
+   So I need to add \gamma, \omega, \max, \alpha etc. to GREEK. \gamma and \omega are missing.
+
+2. "（本文的模型只实现第一条路径，第二见 §7.2 局限 2。）" — "第二条" lost the 条? It shows "第二见 §7.2" — hmm, the md says "第二条见 §7.2 局限 2". The character 条 seems missing... Actually maybe rendered "第二条见" but the image shows "第二见". Could be a rendering/extraction issue. Let me check md.
+
+3. Formula (3.2): "E[D]≈(pN/(N+5))·(N+1)/2, W_账本=2N" — acceptable but the \cdot became ·, ok. W_{\text{账本}} → "W_账本" good.
+
+4. Inline `$k_{ij}$` rendered "k_ij" — acceptable.
+
+So main fix: add missing Greek letters to GREEK map: \gamma, \omega, \max, \min, \Sigma, \lambda, \eta, \mu, \sigma. Let me add a comprehensive set.
+
+Then rebuild, check, view table page.
+
+Let me also check the table page now (tab.png) after fixing.
+
+Fix GREEK and rebuild.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"tools/make_docx.py\"; s=io.open(p,encoding=\"utf-8\").read()\nold = '''GREEK = {r\"\\\\alpha\": \"α\", r\"\\\\beta\": \"β\", r\"\\\\approx\": \"≈\", r\"\\\\cdot\": \"·\",\n         r\"\\\\times\": \"×\", r\"\\\\gg\": \"≫\", r\"\\\\ge\": \"≥\", r\"\\\\le\": \"≤\",\n         r\"\\\\mathbb{E}\": \"E\", r\"\\\\quad\": \"  \", r\"\\\\,\": \" \"}'''\nnew = '''GREEK = {r\"\\\\alpha\": \"α\", r\"\\\\beta\": \"β\", r\"\\\\gamma\": \"γ\", r\"\\\\delta\": \"δ\",\n         r\"\\\\omega\": \"ω\", r\"\\\\lambda\": \"λ\" …（省略 1374 字符）
+```
+
+<details><summary>📤 工具返回（215 字符）</summary>
+
+```
+ϣ����ĸ��ȫ
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx (454 KB), 18 ҳ, pdf=C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+pages 18
+�� ����: True | �� ����: True
+����ҳ 8
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\tab2.png"}
+```
+
+<details><summary>📤 工具返回（142 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\tab2.png</path>
+<type>image</type>
+<content>
+image/png image, 910x1287 px, 170293 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Tables are now 三线表 (top line, header line, bottom line, no vertical rules). 
+
+Issues visible:
+1. **表 2 (A5/A6 rows) breaks across pages** — the table started on previous page and continues here without repeating the header. ZJU requires 续表 with repeated header. Fix: set table header row repeat (`tblHeader`) and/or keep rows together. Simplest: set `w:tblHeader` on header row so it repeats, and add "续表" is complex; at minimum repeat header.
+2. **列宽不均**: "A5" column too narrow relative to content; columns auto-size. Could set column widths per table based on content. Hard to generalize; but I can set autofit and let Word adjust, or specify proportional widths.
+3. 表 3 的 "S3 步级 + 两相调用日志" wraps awkwardly ("日志" on next line) due to narrow column.
+4. 表 4 header "重复条数" wraps to two lines ("重复条" / "数").
+
+Improvements:
+- Set `table.autofit = True` and let Word compute; plus set header repeat.
+- Add `tblW` 100% and `tblLayout autofit`.
+- For column widths: compute based on max cell length proportionally, with min width.
+
+Simple approach: set tblW to 100% (dxa 5000 pct?) and layout autofit; Word will then wrap less. Also reduce font to 10pt? Keep 10.5.
+
+Also the row "S3" wrapping: widening column 2 helps.
+
+Let me implement: after building table, set:
+- tbl.autofit = True
+- tblPr tblW = 5000 (i.e., 100% in pct) type pct? Actually w:tblW w:type="pct" w:w="5000" = 100%.
+- header row: trPr with tblHeader.
+- Prevent row splitting across pages: cantSplit on rows.
+
+Add 续表? Skip; with cantSplit + header repeat it's acceptable.
+
+Let me also give each column a minimum width by setting cell widths proportional to content length: compute max len per column, then allocate total 14.3cm proportionally with min 1.5cm.
+
+Implement in add_table.
+
+Then rebuild and check this page again.
+
+Let me code it.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"tools/make_docx.py\"; s=io.open(p,encoding=\"utf-8\").read()\nold = '''    three_line(table)\n    for r in table.rows:\n        for c in r.cells:\n            c.vertical_alignment = 1\n    sp = doc.add_paragraph()\n    sp.paragraph_format.space_after = Pt(6)'''\nnew = '''    three_line(table)\n\n    # 版式：整表 100% 宽 + 自适应列宽 + 表头跨页重复 + 行内不断页\n    tblPr = table._tbl.tblPr\n    for old_w in tblPr.findall(qn(\"w:tblW\")):\n        tblPr.remove(old_w)\n    tw = OxmlElement(\"w:tblW\"); tw.set(qn(\"w:type\"), \"pc …（省略 1853 字符）
+```
+
+<details><summary>📤 工具返回（202 字符）</summary>
+
+```
+�����ʽ�Ѽ�ǿ
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx (455 KB), 18 ҳ, pdf=C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+
+[OK] ȫ�����ͨ��
+pages 18
+����ҳ 8
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\t3.png"}
+```
+
+<details><summary>📤 工具返回（140 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\t3.png</path>
+<type>image</type>
+<content>
+image/png image, 910x1287 px, 154518 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Better but still issues:
+1. **表 3 的第二列太窄**（"轮级（每 2 步）" 折成两行，"步级 + 两相调用日志" 折成三行）— my width allocation used `len(str)` counting Chinese chars as 1 but they're double width. Need to weight CJK as 2.
+2. **表 4 被分页截断**（只显示 S0-S2，S3/S4 到下一页）— cantSplit holds rows but table can break between rows. Need to keep the table together: set all rows' "keep with next" or use `w:keepNext` on paragraphs inside all but last row.
+3. 表 4 表头 "重复条数" 折行 — width issue again.
+
+Fixes:
+- Width: compute display width = sum(2 if ord(ch)>127 else 1).
+- Keep table on one page: for each row except last, set paragraph keep_with_next = True (python-docx: p.paragraph_format.keep_with_next = True).
+- Also maybe reduce font to 10pt for wide tables.
+
+Let me implement these.
+
+Also 表 3 "幕等价/日志" header wrapped — with better widths it'll fit.
+
+Let me patch add_table.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"tools/make_docx.py\"; s=io.open(p,encoding=\"utf-8\").read()\nold = '''    # 按内容长度分配列宽，避免把短词挤断\n    widths = []\n    for i in range(len(rows[0])):\n        longest = max(len(str(row[i])) if i < len(row) else 0 for row in rows)\n        widths.append(max(longest, 4))'''\nnew = '''    # 按显示宽度分配列宽（中文按 2 个字符算），避免把短词挤断\n    def disp_width(t: str) -> int:\n        return sum(2 if ord(ch) > 127 else 1 for ch in str(t))\n\n    widths = []\n    for i in range(len(rows[0])):\n        longest = max(disp_width(row[i]) …（省略 1272 字符）
+```
+
+<details><summary>📤 工具返回（211 字符）</summary>
+
+```
+�п�����ʾ���ȣ����񲻿�ҳ
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx (455 KB), 18 ҳ, pdf=C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+
+[OK] ȫ�����ͨ��
+pages 18
+����ҳ 8
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\t4.png"}
+```
+
+<details><summary>📤 工具返回（140 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\t4.png</path>
+<type>image</type>
+<content>
+image/png image, 910x1287 px, 169485 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Much better:
+- 表 3 now fits on one page with clean column widths.
+- 表 4 complete on one page, all 5 rows.
+- 三线表 styling.
+
+Remaining minor: 表 4 header "重复条数" still wraps to two lines ("重复条" / "数"); "S3 步级+两相日志" wraps. Acceptable but could widen. The header cells are bold 10.5pt; wrapping is tolerable in academic tables.
+
+Could improve by giving the first column more width. Minor.
+
+Now: commit, push, reopen Word, summarize.
+
+Also chatlog update.
+
+Let me finish.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && rm -f *.png\nbash tools/update_chatlog.sh 2>&1 | tail -2\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"公式按章编号（3.1/3.2/5.1）；表格转三线表并按显示宽度分配列宽、整表不跨页；补全希腊字母渲染\"\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git ls-remote --heads origin 2>/dev/null | cut -c1-12\npython - <<'EOF'\nimport os, win32com.client as win32 …（省略 214 字符）
 ```
