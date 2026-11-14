@@ -1,16 +1,15 @@
+# -*- coding: utf-8 -*-
 """
-按《浙江大学本科生毕业论文（设计）编写规则》的排版要求生成 report/REPORT.docx。
+按《浙江大学研究生学位论文编写规则》生成 report/REPORT.docx。
 
-排版要点（对应校级规范）：
-- A4；页边距 上下 2.54 cm、左 3.0 cm、右 2.6 cm
-- 正文：宋体小四(12pt)，1.5 倍行距，首行缩进 2 字符，两端对齐
-- 章标题：黑体三号，居中，段前 24 磅、段后 18 磅
-- 节标题：黑体四号，段前 12 磅、段后 6 磅
-- 图题：五号宋体居中，置于图下；表题：五号黑体居中，置于表上
-- 页码：页脚居中；封面不编码，摘要与目录用小写罗马数字，正文从 1 起
-- 参考文献：GB/T 7714—2015 著录，悬挂缩进
-
-目录用两遍法生成：先排一遍、导出 PDF 定位每章所在页，再回填页码重排。
+格式依据（研究生院规则 + 经济学院/物理学系规范）：
+- A4；页边距 上下 2.54 cm、左右 3.17 cm
+- 正文 宋体 小四(12pt)，1.5 倍行距，首行缩进 2 字符，两端对齐，纯黑
+- 章标题（含"摘要""目录""参考文献"）黑体 三号(16pt) 加粗；摘要/目录/参考文献居中，正文各章顶格左对齐
+- 节标题 黑体 四号(14pt)，三级标题 黑体 小四(12pt)
+- 图题 五号宋体居中置于图下；表题 五号黑体居中置于表上
+- 页码：封面不编码，摘要与目录用小写罗马数字，正文从 1 起，页脚居中
+- 目录用 Word 域生成，单倍行距压到一页
 """
 
 from __future__ import annotations
@@ -21,8 +20,8 @@ import re
 from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.text import (WD_ALIGN_PARAGRAPH, WD_COLOR_INDEX, WD_TAB_ALIGNMENT,
-                            WD_TAB_LEADER)
+from docx.enum.text import (WD_ALIGN_PARAGRAPH, WD_COLOR_INDEX,
+                            WD_TAB_ALIGNMENT, WD_TAB_LEADER)
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
@@ -31,12 +30,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "report", "REPORT.md")
 DST = os.path.join(ROOT, "report", "REPORT.docx")
 
-GREEK = {
-    r"\alpha": "α", r"\beta": "β", r"\omega": "ω", r"\approx": "≈",
-    r"\cdot": "·", r"\times": "×", r"\gg": "≫", r"\in": "∈",
-    r"\max": "max", r"\mathrm": "", r"\mathbb{E}": "E",
-    r"\le": "≤", r"\ge": "≥", r"\quad": "  ", r"\qquad": "    ", r"\,": " ",
-}
+BLACK = RGBColor(0, 0, 0)
+BODY = 12          # 小四
 
 META = {
     "课程": "海洋数据挖掘技术",
@@ -48,72 +43,68 @@ META = {
     "日期": "2026 年 11 月",
 }
 
+CENTERED_H1 = ("摘要", "目录", "参考文献", "致谢", "附录")
+
+GREEK = {r"\alpha": "α", r"\beta": "β", r"\approx": "≈", r"\cdot": "·",
+         r"\times": "×", r"\gg": "≫", r"\ge": "≥", r"\le": "≤",
+         r"\mathbb{E}": "E", r"\quad": "  ", r"\,": " "}
+
 
 def latex_to_text(s: str) -> str:
     s = s.strip().replace("$$", "").replace("$", "")
     for k, v in GREEK.items():
         s = s.replace(k, v)
     s = re.sub(r"\\(?:text|boxed|mathrm)\{([^{}]*)\}", r"\1", s)
-    def _frac(m):
-        a, b = m.group(1).strip(), m.group(2).strip()
-        simple = lambda t: re.fullmatch(r"[A-Za-z\u0370-\u03ff0-9]+", t) is not None
-        return f"{a}/{b}" if (simple(a) and simple(b)) else f"({a})/({b})"
-    s = re.sub(r"\\frac\{([^{}]*)\}\{([^{}]*)\}", _frac, s)
+    s = re.sub(r"\\frac\{([^{}]*)\}\{([^{}]*)\}", r"(\1)/(\2)", s)
     s = re.sub(r"\\[a-zA-Z]+\{?", "", s)
     s = s.replace("{", "").replace("}", "").replace("\\", "")
-    for k, v in (("^*", "*"), ("^4", "⁴"), ("^2", "²"), ("^3", "³"), ("^n", "ⁿ")):
+    for k, v in (("^*", "*"), ("^4", "⁴"), ("^2", "²"), ("^3", "³")):
         s = s.replace(k, v)
     return re.sub(r"\s{2,}", " ", s).strip()
 
 
-def para_bottom_border(par, sz=8):
-    """段落下框线：宽度跟随栏宽，比 run.underline 稳定。"""
-    pPr = par._p.get_or_add_pPr()
-    pBdr = pPr.find(qn("w:pBdr"))
-    if pBdr is None:
-        pBdr = OxmlElement("w:pBdr")
-        pPr.append(pBdr)
-    bottom = OxmlElement("w:bottom")
-    bottom.set(qn("w:val"), "single")
-    bottom.set(qn("w:sz"), str(sz))
-    bottom.set(qn("w:space"), "1")
-    bottom.set(qn("w:color"), "000000")
-    pBdr.append(bottom)
-
-
-def cn(run, font="宋体", size=12, bold=False, color=(0, 0, 0)):
+def cn(run, font="宋体", size=BODY, bold=False):
     run.font.name = "Times New Roman"
     run._element.get_or_add_rPr().get_or_add_rFonts().set(qn("w:eastAsia"), font)
     run.font.size = Pt(size)
     run.bold = bold
-    if color is not None:
-        run.font.color.rgb = RGBColor(*color)
+    run.font.color.rgb = BLACK
 
 
-def add_runs(par, text: str, font="宋体", size=12):
+def add_runs(par, text: str, font="宋体", size=BODY, bold=False):
     for tok in re.split(r"(\*\*[^*]+\*\*|`[^`]+`)", text):
         if not tok:
             continue
         if tok.startswith("**") and tok.endswith("**"):
             cn(par.add_run(tok[2:-2]), font, size, True)
         elif tok.startswith("`") and tok.endswith("`"):
-            r = par.add_run(tok[1:-1])
-            r.font.name = "Consolas"
-            r.font.size = Pt(size - 1)
-            r.font.color.rgb = RGBColor(0x8B, 0x45, 0x13)
+            cn(par.add_run(tok[1:-1]), "Consolas", size - 0.5, bold)
         else:
-            # 行内链接只保留可见文字（网址在参考文献里），并去掉单星号斜体
             tok = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", tok)
             tok = re.sub(r"\*([^*]+)\*", r"\1", tok)
-            cn(par.add_run(tok), font, size)
+            cn(par.add_run(tok), font, size, bold)
+
+
+def para_bottom_border(par, sz=8):
+    pPr = par._p.get_or_add_pPr()
+    pBdr = pPr.find(qn("w:pBdr"))
+    if pBdr is None:
+        pBdr = OxmlElement("w:pBdr")
+        pPr.append(pBdr)
+    bottom = OxmlElement("w:bottom")
+    for k, v in (("w:val", "single"), ("w:sz", str(sz)), ("w:space", "1"),
+                 ("w:color", "000000")):
+        bottom.set(qn(k), v)
+    pBdr.append(bottom)
 
 
 def page_number_field(par):
     run = par.add_run()
     fld = OxmlElement("w:fldChar"); fld.set(qn("w:fldCharType"), "begin")
-    instr = OxmlElement("w:instrText"); instr.set(qn("xml:space"), "preserve"); instr.text = " PAGE "
-    fld2 = OxmlElement("w:fldChar"); fld2.set(qn("w:fldCharType"), "end")
-    run._r.append(fld); run._r.append(instr); run._r.append(fld2)
+    instr = OxmlElement("w:instrText"); instr.set(qn("xml:space"), "preserve")
+    instr.text = " PAGE "
+    end = OxmlElement("w:fldChar"); end.set(qn("w:fldCharType"), "end")
+    run._r.append(fld); run._r.append(instr); run._r.append(end)
     cn(run, "宋体", 10.5)
 
 
@@ -123,27 +114,33 @@ def set_pgnum(section, fmt: str, start: int):
     if el is None:
         el = OxmlElement("w:pgNumType")
         mar = sectPr.find(qn("w:pgMar"))
-        if mar is not None:
-            mar.addnext(el)
-        else:
-            sectPr.insert(0, el)
+        (mar.addnext(el) if mar is not None else sectPr.insert(0, el))
     el.set(qn("w:fmt"), fmt)
     el.set(qn("w:start"), str(start))
 
 
+def continue_pgnum(section, fmt: str):
+    """只改编号格式，不重置起点——用于摘要续页之后接目录。"""
+    sectPr = section._sectPr
+    el = sectPr.find(qn("w:pgNumType"))
+    if el is None:
+        el = OxmlElement("w:pgNumType")
+        mar = sectPr.find(qn("w:pgMar"))
+        (mar.addnext(el) if mar is not None else sectPr.insert(0, el))
+    el.set(qn("w:fmt"), fmt)
+
+
 def setup_page(section):
     section.page_width, section.page_height = Cm(21), Cm(29.7)
-    section.top_margin = Cm(2.54)
-    section.bottom_margin = Cm(2.54)
-    section.left_margin = Cm(3.0)
-    section.right_margin = Cm(2.6)
+    section.top_margin = section.bottom_margin = Cm(2.54)
+    section.left_margin = section.right_margin = Cm(3.17)
 
 
 def footer_pageno(section):
     section.footer.is_linked_to_previous = False
-    for p in list(section.footer.paragraphs):
-        p.text = ""
     p = section.footer.paragraphs[0]
+    for r in list(p.runs):
+        r._r.getparent().remove(r._r)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     page_number_field(p)
 
@@ -152,22 +149,18 @@ def build_cover(doc):
     doc.add_paragraph()
     p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     cn(p.add_run("浙 江 大 学"), "黑体", 34, True)
-
     p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_before = Pt(6)
     cn(p.add_run("《海洋数据挖掘技术》课程大作业"), "黑体", 18)
-
     p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     cn(p.add_run("实 验 报 告"), "黑体", 18)
-    for _ in range(3):
+    for _ in range(2):
         doc.add_paragraph()
-
     p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    cn(p.add_run("扇出效应的“部分完成”盲区"), "黑体", 22, True)
+    cn(p.add_run("扇出效应下存档粒度与幂等键作用域的定量边界"), "黑体", 18, True)
     p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    cn(p.add_run("——AI 智能体存档粒度与幂等键粒度的一致性实验"), "黑体", 16, True)
-
-    for _ in range(3):
+    cn(p.add_run("——台风预警群发场景的模拟研究"), "黑体", 14, True)
+    for _ in range(2):
         doc.add_paragraph()
 
     rows = [("姓　　名", META["姓名"]), ("学　　号", META["学号"]),
@@ -185,50 +178,29 @@ def build_cover(doc):
         p1.paragraph_format.space_before = Pt(0)
         p1.paragraph_format.space_after = Pt(2)
         p1.paragraph_format.line_spacing = 1.0
-        r = p1.add_run(v)
-        cn(r, "宋体", 14)
+        cn(p1.add_run(v), "宋体", 14)
         para_bottom_border(p1)
 
-    for _ in range(2):
-        doc.add_paragraph()
+    doc.add_paragraph()
     p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     cn(p.add_run(META["日期"]), "宋体", 14)
-
-    doc.add_paragraph()
     p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     cn(p.add_run("代码与完整 AI 对话记录：https://github.com/DSHCDX/ocean-dm-hw"), "宋体", 9)
 
 
 def style_headings(doc):
-    spec = {"Heading 1": (16, 24, 18, WD_ALIGN_PARAGRAPH.CENTER),
-            "Heading 2": (14, 12, 6, WD_ALIGN_PARAGRAPH.LEFT),
-            "Heading 3": (12, 8, 4, WD_ALIGN_PARAGRAPH.LEFT)}
-    for name, (size, before, after, align) in spec.items():
+    spec = {"Heading 1": (16, 12, 6), "Heading 2": (14, 12, 6), "Heading 3": (12, 6, 3)}
+    for name, (size, before, after) in spec.items():
         st = doc.styles[name]
         st.font.name = "Times New Roman"
         st.font.size = Pt(size)
         st.font.bold = True
-        st.font.color.rgb = RGBColor(0, 0, 0)
+        st.font.color.rgb = BLACK
         st.element.get_or_add_rPr().get_or_add_rFonts().set(qn("w:eastAsia"), "黑体")
         st.paragraph_format.space_before = Pt(before)
         st.paragraph_format.space_after = Pt(after)
-        st.paragraph_format.alignment = align
         st.paragraph_format.line_spacing = 1.5
-
-
-def build_toc(doc, entries):
-    p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(12)
-    p.paragraph_format.space_after = Pt(18)
-    cn(p.add_run("目　　录"), "黑体", 18, True)
-
-    for text, page in entries:
-        par = doc.add_paragraph()
-        par.paragraph_format.tab_stops.add_tab_stop(
-            Cm(14.6), WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS)
-        par.paragraph_format.line_spacing = 1.5
-        cn(par.add_run(text), "宋体", 12)
-        cn(par.add_run("\t" + (str(page) if page else "")), "宋体", 12)
+        st.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
 
 def add_table(doc, rows):
@@ -238,13 +210,16 @@ def add_table(doc, rows):
     for i, cell in enumerate(rows[0]):
         p = table.rows[0].cells[i].paragraphs[0]
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        add_runs(p, latex_to_text(cell) if "$" in cell else cell, "宋体", 9)
+        p.paragraph_format.line_spacing = 1.0
+        add_runs(p, latex_to_text(cell) if "$" in cell else cell, "宋体", 10.5, True)
     for row in rows[1:]:
         cells = table.add_row().cells
         for i, cell in enumerate(row[: len(rows[0])]):
             p = cells[i].paragraphs[0]
-            add_runs(p, latex_to_text(cell) if "$" in cell else cell, "宋体", 9)
-    doc.add_paragraph()
+            p.paragraph_format.line_spacing = 1.0
+            add_runs(p, latex_to_text(cell) if "$" in cell else cell, "宋体", 10.5)
+    sp = doc.add_paragraph()
+    sp.paragraph_format.space_after = Pt(6)
 
 
 def parse_blocks(md):
@@ -309,138 +284,158 @@ def parse_blocks(md):
         i += 1
 
 
-def build(toc_pages: dict[str, int] | None = None):
-    md = open(SRC, encoding="utf-8").read()
-    md = re.sub(r"<REPO_URL>", "https://github.com/DSHCDX/ocean-dm-hw", md)
+def body_para(doc, text, indent=True, size=BODY):
+    p = doc.add_paragraph()
+    if indent:
+        p.paragraph_format.first_line_indent = Cm(0.85)
+    p.paragraph_format.line_spacing = 1.5
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    add_runs(p, latex_to_text(text) if "$" in text else text, "宋体", size)
+    return p
 
+
+def build():
+    md = open(SRC, encoding="utf-8").read()
     doc = Document()
     st = doc.styles["Normal"]
     st.font.name = "Times New Roman"
-    st.font.size = Pt(12)
+    st.font.size = Pt(BODY)
+    st.font.color.rgb = BLACK
     st.element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
+    st.paragraph_format.line_spacing = 1.5
+    style_headings(doc)
 
-    blocks = list(parse_blocks(md))
-    # 封面之后从第一个 "## " 开始进正文；"#" 一级标题只用于生成封面题目
-    h1 = [b for b in blocks if b[0] == "h1"]
-    body = [b for b in blocks if b[0] != "h1"]
+    blocks = [b for b in parse_blocks(md) if b[0] != "h1"]
 
-    # ---------- 封面（不编码）
     setup_page(doc.sections[0])
     build_cover(doc)
 
-    # ---------- 摘要（罗马数字 i）
+    # 把「摘要」与「正文」切开：摘要进第 2 节，其余进第 4 节
+    split = next(i for i, (k, v) in enumerate(blocks)
+                 if k == "h2" and v.startswith("1."))
+    pre_blocks, post_blocks = blocks[:split], blocks[split:]
+
+    # 第 2 节：摘要（罗马数字 i）
     sec = doc.add_section(WD_SECTION.NEW_PAGE)
-    setup_page(sec)
-    footer_pageno(sec)
-    set_pgnum(sec, "lowerRoman", 1)
+    setup_page(sec); footer_pageno(sec); set_pgnum(sec, "lowerRoman", 1)
+    render_blocks(doc, pre_blocks)
 
-    # ---------- 目录（罗马数字 ii）
-    sec2 = doc.add_section(WD_SECTION.NEW_PAGE)
-    setup_page(sec2)
-    footer_pageno(sec2)
-    set_pgnum(sec2, "lowerRoman", 2)
+    # 目录与摘要同属第 2 节，用分页符分开，页码自动连续（i, ii, iii …）
+    from docx.enum.text import WD_BREAK
+    brk = doc.add_paragraph()
+    brk.add_run().add_break(WD_BREAK.PAGE)
     p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_after = Pt(18)
-    cn(p.add_run("目　　录"), "黑体", 18, True)
-    doc.add_paragraph("@TOC_PLACEHOLDER@")
+    p.paragraph_format.space_after = Pt(12)
+    cn(p.add_run("目　　录"), "黑体", 16, True)
+    ph = doc.add_paragraph("@TOC_PLACEHOLDER@")
+    ph.paragraph_format.line_spacing = 1.0
 
-    # ---------- 正文（阿拉伯数字 1 起）
+    # 第 4 节：正文（阿拉伯数字 1 起）
     sec3 = doc.add_section(WD_SECTION.NEW_PAGE)
-    setup_page(sec3)
-    footer_pageno(sec3)
-    set_pgnum(sec3, "decimal", 1)
+    setup_page(sec3); footer_pageno(sec3); set_pgnum(sec3, "decimal", 1)
 
-    first_h2 = True
-    for kind, payload in body:
+    render_blocks(doc, post_blocks)
+
+    doc.save(DST)
+    return DST
+
+
+def render_blocks(doc, blocks):
+    li_seq = 0
+    prev_kind = None
+    for kind, payload in blocks:
+        if kind != "li":
+            li_seq = 0
         if kind == "h2":
             p = doc.add_paragraph(style="Heading 1")
-            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-            p.paragraph_format.space_before = Pt(0 if first_h2 else 24)
-            p.paragraph_format.space_after = Pt(18)
-            if payload.startswith("1.") or payload.startswith("10."):
+            text = latex_to_text(payload) if "$" in payload else payload
+            p.alignment = (WD_ALIGN_PARAGRAPH.CENTER
+                           if any(text.startswith(x) for x in CENTERED_H1)
+                           else WD_ALIGN_PARAGRAPH.LEFT)
+            if text.startswith("参考文献") or text.startswith("致谢"):
                 p.paragraph_format.page_break_before = True
-            cn(p.add_run(latex_to_text(payload) if "$" in payload else payload), "黑体", 16, True)
-            first_h2 = False
+            cn(p.add_run(text), "黑体", 16, True)
         elif kind == "h3":
             p = doc.add_paragraph(style="Heading 2")
             p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-            p.paragraph_format.space_before = Pt(12)
-            p.paragraph_format.space_after = Pt(6)
             cn(p.add_run(latex_to_text(payload) if "$" in payload else payload), "黑体", 14, True)
         elif kind == "h4":
             p = doc.add_paragraph(style="Heading 3")
             p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-            p.paragraph_format.space_before = Pt(8)
-            p.paragraph_format.space_after = Pt(4)
             cn(p.add_run(latex_to_text(payload) if "$" in payload else payload), "黑体", 12, True)
         elif kind == "img":
             cap, path = payload
             full = os.path.normpath(os.path.join(ROOT, "report", path))
             if os.path.exists(full):
-                doc.add_picture(full, width=Cm(15.2))
+                doc.add_picture(full, width=Cm(14.6))
                 doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p = doc.add_paragraph()
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p.paragraph_format.space_after = Pt(10)
+            p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.paragraph_format.space_after = Pt(8)
+            p.paragraph_format.line_spacing = 1.0
             cn(p.add_run(cap), "宋体", 10.5)
         elif kind == "table":
             add_table(doc, payload)
         elif kind == "code":
             p = doc.add_paragraph()
             p.paragraph_format.left_indent = Cm(0.6)
-            r = p.add_run("\n".join(payload))
-            r.font.name = "Consolas"; r.font.size = Pt(8.5)
+            p.paragraph_format.line_spacing = 1.0
+            cn(p.add_run("\n".join(payload)), "Consolas", 10.5)
         elif kind == "quote":
             for seg in payload:
                 if not seg:
                     continue
                 p = doc.add_paragraph()
-                p.paragraph_format.left_indent = Cm(0.8)
-                add_runs(p, latex_to_text(seg) if "$" in seg else seg, "宋体", 10.5)
-                for r in p.runs:
-                    r.font.color.rgb = RGBColor(0x44, 0x44, 0x44)
+                p.paragraph_format.left_indent = Cm(0.85)
+                p.paragraph_format.line_spacing = 1.5
+                p.paragraph_format.space_before = Pt(0)
+                p.paragraph_format.space_after = Pt(0)
+                add_runs(p, latex_to_text(seg) if "$" in seg else seg, "宋体", BODY)
         elif kind == "li":
-            p = doc.add_paragraph(style="List Bullet")
-            add_runs(p, latex_to_text(payload) if "$" in payload else payload)
+            li_seq += 1
+            p = doc.add_paragraph()
+            p.paragraph_format.left_indent = Cm(0.85)
+            p.paragraph_format.first_line_indent = Cm(0)
+            p.paragraph_format.line_spacing = 1.5
+            p.paragraph_format.space_before = Pt(0)
+            p.paragraph_format.space_after = Pt(0)
+            p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            add_runs(p, f"（{li_seq}）", "宋体", BODY)
+            add_runs(p, latex_to_text(payload) if "$" in payload else payload, "宋体", BODY)
         elif kind == "formula":
             p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            cn(p.add_run(latex_to_text(payload)), "宋体", 12)
+            p.paragraph_format.line_spacing = 1.5
+            cn(p.add_run(latex_to_text(payload)), "宋体", BODY)
         else:
             text = payload
             if text.startswith("[待补]"):
                 p = doc.add_paragraph()
                 p.paragraph_format.left_indent = Cm(0.6)
                 p.paragraph_format.first_line_indent = Cm(0)
+                p.paragraph_format.line_spacing = 1.5
                 r = p.add_run(text)
                 cn(r, "宋体", 11)
                 r.font.highlight_color = WD_COLOR_INDEX.YELLOW
                 continue
             if re.match(r"^\*\*(表|图)\s*\d+", text):
                 p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                p.paragraph_format.space_before = Pt(8)
-                p.paragraph_format.space_after = Pt(4)
-                add_runs(p, latex_to_text(text.replace("**", "")) if "$" in text else text.replace("**", ""), "黑体", 10.5)
+                p.paragraph_format.space_before = Pt(6)
+                p.paragraph_format.space_after = Pt(3)
+                p.paragraph_format.line_spacing = 1.0
+                clean = text.replace("**", "")
+                cn(p.add_run(latex_to_text(clean) if "$" in clean else clean), "黑体", 10.5)
                 continue
-            p = doc.add_paragraph()
-            p.paragraph_format.first_line_indent = Cm(0.85)
-            p.paragraph_format.line_spacing = 1.5
-            p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-            add_runs(p, latex_to_text(text) if "$" in text else text)
-
-    doc.save(DST)
-    return [t for k, t in body if k == "h2"]
+            body_para(doc, text)
 
 
 def finalize_with_word():
-    """用 Word 在占位符处插入目录域并更新页码，随后另存 docx 与 PDF。"""
     import win32com.client as win32
-
     pdf = os.path.join(os.environ["TEMP"], "REPORT_final.pdf")
     word = win32.gencache.EnsureDispatch("Word.Application")
     word.Visible = False
     word.DisplayAlerts = 0
     d = word.Documents.Open(DST)
-
     rng = d.Content
     rng.Find.ClearFormatting()
     if rng.Find.Execute("@TOC_PLACEHOLDER@"):
@@ -450,6 +445,16 @@ def finalize_with_word():
         toc.Update()
         d.Repaginate()
         toc.Update()
+    for name, size in (("TOC 1", 10.5), ("TOC 2", 10.5), ("TOC 3", 10.5)):
+        try:
+            stl = d.Styles(name)
+            stl.Font.Size = size
+            stl.ParagraphFormat.LineSpacingRule = 0
+            stl.ParagraphFormat.SpaceBefore = 0
+            stl.ParagraphFormat.SpaceAfter = 0
+        except Exception:
+            pass
+    d.TablesOfContents(1).Update()
     d.Fields.Update()
     d.Save()
     pages = d.ComputeStatistics(2)
@@ -460,9 +465,9 @@ def finalize_with_word():
 
 
 def main():
-    build(None)
+    build()
     pages, pdf = finalize_with_word()
-    print("saved", DST, os.path.getsize(DST) // 1024, "KB;", pages, "页; pdf:", pdf)
+    print(f"saved {DST} ({os.path.getsize(DST)//1024} KB), {pages} 页, pdf={pdf}")
 
 
 if __name__ == "__main__":
