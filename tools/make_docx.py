@@ -71,12 +71,14 @@ def cn(run, font="宋体", size=BODY, bold=False):
     run.font.color.rgb = BLACK
 
 
-def add_runs(par, text: str, font="宋体", size=BODY, bold=False):
+def add_runs(par, text: str, font="宋体", size=BODY, bold=False, strip_bold=False):
+    if strip_bold:
+        text = text.replace("**", "")
     for tok in re.split(r"(\*\*[^*]+\*\*|`[^`]+`)", text):
         if not tok:
             continue
         if tok.startswith("**") and tok.endswith("**"):
-            cn(par.add_run(tok[2:-2]), font, size, True)
+            cn(par.add_run(tok[2:-2]), font, size, False if strip_bold else True)
         elif tok.startswith("`") and tok.endswith("`"):
             cn(par.add_run(tok[1:-1]), "Consolas", size - 0.5, bold)
         else:
@@ -292,7 +294,7 @@ def body_para(doc, text, indent=True, size=BODY):
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(0)
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    add_runs(p, latex_to_text(text) if "$" in text else text, "宋体", size)
+    add_runs(p, latex_to_text(text) if "$" in text else text, "宋体", size, strip_bold=True)
     return p
 
 
@@ -392,7 +394,7 @@ def render_blocks(doc, blocks):
                 p.paragraph_format.line_spacing = 1.5
                 p.paragraph_format.space_before = Pt(0)
                 p.paragraph_format.space_after = Pt(0)
-                add_runs(p, latex_to_text(seg) if "$" in seg else seg, "宋体", BODY)
+                add_runs(p, latex_to_text(seg) if "$" in seg else seg, "宋体", BODY, strip_bold=True)
         elif kind == "li":
             li_seq += 1
             p = doc.add_paragraph()
@@ -402,8 +404,8 @@ def render_blocks(doc, blocks):
             p.paragraph_format.space_before = Pt(0)
             p.paragraph_format.space_after = Pt(0)
             p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-            add_runs(p, f"（{li_seq}）", "宋体", BODY)
-            add_runs(p, latex_to_text(payload) if "$" in payload else payload, "宋体", BODY)
+            add_runs(p, f"（{li_seq}）", "宋体", BODY, strip_bold=True)
+            add_runs(p, latex_to_text(payload) if "$" in payload else payload, "宋体", BODY, strip_bold=True)
         elif kind == "formula":
             p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p.paragraph_format.line_spacing = 1.5

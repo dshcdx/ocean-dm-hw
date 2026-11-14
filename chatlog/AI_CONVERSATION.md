@@ -42,6 +42,7 @@
 | 31 | 摘要上面不应该有内容的，多了这部分也导致了断页；大标题怎么是居中对齐呢。改完后给我看看 |  |
 | 32 | 摘要还是需要居中，目录可以整理成一页而不是两页；全文格式看着都很乱，比如摘要也不应该有黑点很 |  |
 | 33 | 这部分格式不对 |  |
+| 34 | 摘要的内容以及正文不用加粗字体，摘要简化成一页 |  |
 
 > 第 1 轮起为安装技能、配置 GitHub 等环境准备；第 14 轮起为课程大作业本身的讨论。
 
@@ -19744,4 +19745,275 @@ Commit + push + open.
 
 ```json
 {"command": "cd /d/work/default-workspace/ocean-dm-hw && rm -f abs_hi.png\nbash tools/update_chatlog.sh 2>&1 | tail -2\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"摘要编号条目与正文统一为同一几何：首行缩进 2 字符、左缩进归零、1.5 倍行距\"\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git ls-remote --heads origin 2>/dev/null | cut -c1-12\npython - <<'EOF'\nimport os, win32com.client as win32\nw =  …（省略 208 字符）
+```
+
+<details><summary>📤 工具返回（44 字符）</summary>
+
+```
+[OK] ȫ�����ͨ��
+da5e49886195
+Word �Ѵ򿪣�ҳ��: 19
+```
+
+</details>
+
+### 🤖 助手 · 21:16:18
+
+修好了，Word 已重新打开（`da5e498`）。
+
+## 问题在哪
+
+你截图里那四条 `（1）—（4）` 的**左缩进是 0.85 cm、首行不缩进**，而普通正文是**首行缩进 0.85 cm**——两种几何混在同一页，所以看着参差：条目整段往里推、正文只推第一行，“主要结果（…）：”那一行又几乎顶格。
+
+改法：把编号条目也按正文的几何来——**左缩进归零、首行缩进 2 字符**，行距 1.5、字号 12pt，与正文完全一致。
+
+## 现在摘要页的样子
+
+- “摘要”居中，黑体三号
+- 所有段落（含 `（1）—（4）`）都是：首行缩进 2 字符、小四宋体、1.5 倍行距、两端对齐、纯黑
+- 没有项目符号，编号用全角 `（1）`
+- 底部页码 `i`
+
+## 关于你截图里那两条红色波浪线
+
+`N=50`、`p=0.30` 下面的红波浪是 **Word 的拼写检查提示**，不是格式问题，也不影响打印和 PDF。想去掉可以在 Word 里：`文件 → 选项 → 校对 → 取消勾选“键入时检查拼写”`。
+
+## 还剩的
+
+- **§11 两块黄色高亮**等你填
+- 目录是域，正文改动后记得 `Ctrl+A` → `F9`
+
+如果你在 Word 里已经手动改过什么，告诉我，我以你的版本为准——现在重新生成会覆盖手工修改。
+
+## 第 34 轮
+
+### 👤 用户 · 21:19:57
+摘要的内容以及正文不用加粗字体，摘要简化成一页
+
+<details><summary>🤖 助手推理过程</summary>
+
+User wants:
+1. 摘要的内容以及正文不用加粗字体 — remove bold from abstract body and main text. So all **bold** in body paragraphs should render as normal weight (not bold). Probably keep headings bold (they said 内容 and 正文, not 标题).
+2. 摘要简化成一页 — shorten the abstract so it fits one page.
+
+Implementation:
+- In make_docx: ignore bold markers in body text (render **...** as plain text). Simplest: strip `**` in body paragraphs/lists/quotes instead of bolding. But table cells bold headers? Probably keep table header bold? "正文不用加粗" — tables could stay. I'll strip bold in body paragraphs, list items, quotes; keep table header bold (or also strip? keep).
+- Shorten abstract: rewrite the 摘要 in REPORT.md to ~half length, so it fits one page (currently spans 2 pages: i and ii).
+
+Let me draft a shorter abstract (~450 字):
+- 1 paragraph context (2 sentences)
+- 1 paragraph question
+- 3-4 short result points (numbers)
+- keywords + link
+
+Also remove bold markers in the abstract text entirely (since bold is stripped anyway, but cleaner md).
+
+Then rebuild, verify 摘要 fits page i, and TOC page becomes ii.
+
+Also need to update check.py's abstract number assertions? check.py asserts numbers 6.60, 6.75, 6.82, 6.68, 0.134, 19.9, 25.8, 98.0 appear in abstract. If I shorten, some may drop. I'll update check.py accordingly.
+
+Let me write the new abstract.
+
+Draft:
+
+## 摘要
+
+第 3 讲把 AI 智能体的可靠性归结为存档点与唯一编号两条基本功。2026 年 9–10 月已有工作指出：部分变更会让按调用幂等失效[1-3]。本文不声称发现这个盲区，而是在扇出效应（一次调用发往 N 个目标）这个形状下做定量回答：重复副作用随 N 与崩溃率 p 怎么变，把记账单位下沉到子效应级能换来多少，代价是多少。
+
+台风预警群发场景的模拟（纯 Python，无 LLM API）给出四点：
+
+（1）粗粒度存档之间几乎等价。裸跑、轮级、步级、步级+两相日志在 N=50、p=0.30 下的重复为 6.60、6.75、6.82、6.68 条/次运行，最大差异 0.22 条（<3.3%）。
+
+（2）子效应级账本是断崖：重复降到 0.134 条（−98.0%），漏发 1.40→0.007，代价是写入 19.9 倍、模拟时间 +25.8%。
+
+（3）门槛判据 α/β > 4(N+5)/[p(N+1)]；九个格子中经验交叉点与解析值之比为 1.05–1.26，解析式是保守下界。
+
+（4）批量旋钮：重复正比于批长 k、写入等于 2N/k，最优批长随代价比单调下降——α/β 在 5–10 时 k*=10，300 以上取 k=1；按预警场景标定，k*=1 即逐条账本最优。
+
+关键词：…
+代码、数据与完整 AI 对话记录：https://…
+
+That's ~450 chars → should fit one page with 1.5 spacing (roughly 25 lines).
+
+Let me implement:
+1. Replace abstract section in REPORT.md.
+2. Patch make_docx to strip bold in body (render "**x**" as "x").
+3. Rebuild, check, verify.
+
+For bold stripping: in add_runs, change the bold branch to cn(..., bold=False) when a flag set. Simplest: in render paths for body/li/quote pass a flag; or just strip ** before calling add_runs for those. I'll strip in body_para/li/quote by replacing "**" with "".
+
+But the table captions use **表 N** — those are handled separately (removed already). Table headers bold — keep.
+
+Let me patch: in the else-branch of add_runs, keep bold handling; but for body paragraphs call add_runs with a pre-cleaned text (no **). Simplest: add param `strip_bold=False` to add_runs; when True, replace ** with "" and never bold.
+
+Implement in body_para, li, quote calls.
+
+Let me do it.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io, re\np=\"report/REPORT.md\"; s=io.open(p,encoding=\"utf-8\").read()\nstart = s.index(\"## 摘要\")\nend = s.index(\"## 1. 切入点\")\nnew = \"\"\"## 摘要\n\n第 3 讲把 AI 智能体的可靠性归结为两条分布式系统的基本功：存档点与唯一编号。2026 年 9 至 10 月的三项工作已指出，部分变更会让按调用的幂等失效。本文不声称发现这个盲区，而是在扇出效应（一次调用发往 N 个目标）这个形状上做定量回答：重复副作用随 N 与崩溃率 p 怎么变，把记账单位从调用级下沉到子效应级能换来多少，代价是多少。\n\n以台风预警群发场景做纯模拟（Python，无任何 LLM API 调用），得到四点：\n\n（1）粗粒度存档之间几乎等价。裸跑、轮级、步级、步级+两相日志在 N=50、p=0.30 下的重复分别为 6.60、6.75、6.82、6.68 条/次运行，最大差异 0.22 条，对基线不到 3.3%；把粒度从轮细化到步，收益为负。\n\n（2）子效应级账本带来断崖。重复降到 0.134  …（省略 2444 字符）
+```
+
+<details><summary>📤 工具返回（195 字符）</summary>
+
+```
+ժҪ��ѹ��������Լ 755
+����ȥ��������Ч
+ok
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx (453 KB), 18 ҳ, pdf=C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python tools/check.py 2>&1 | tail -6\npython - <<'EOF'\nimport os, pymupdf\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\nprint(\"pages\", len(doc))\nfor i in range(4):\n    t=[x for x in doc[i].get_text().strip().splitlines() if x.strip()]\n    print(i+1, \"| 首:\", (t[0][:22] if t else \"-\"), \"| 末:\", (t[-1][:14] if t else \"-\"))\ndoc[1].get_pixmap(dpi=125).save(os.path.join(os.environ[\"TEMP\"],\"a2.png\"))\nEOF\ncp \"$TEMP/a2.png\" /d/work/default-workspace/ocean-dm-hw/a2.png", "timeoutMs": 300000}
+```
+
+<details><summary>📤 工具返回（296 字符）</summary>
+
+```
+���� 27 KB / docx 453 KB
+
+[FAIL] 3 ��δͨ����
+   - �ο����� [1] δ�����ı�����
+   - �ο����� [2] δ�����ı�����
+   - �ο����� [3] δ�����ı�����
+pages 18
+1 | ��: �� �� �� ѧ  | ĩ: ���������� AI �Ի���¼��
+2 | ��: i  | ĩ: ���롢���������� AI �Ի�
+3 | ��: ii  | ĩ: 11. AI Э��˵�� ..
+4 | ��: 1  | ĩ: step ���� turn ��
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Now:
+- Page 2 = 摘要 (footer i only) ✓ ONE page
+- Page 3 = 目录 (ii) ✓
+- Page 4 = 正文 p1
+
+Check fails: [1][2][3] not cited — because my new abstract dropped the [1][2][3] markers. The references are still cited in §2.1 (Li[1], UndoBench[2], Madan[3])? Apparently not — check says not cited. Let me check §2.1 text: I wrote "Li 等人的 [*Where Does Exactly-Once Live?*](...)" without [1]. Right — in the v2 report §2.1 has no [1][2][3] markers (they were only in my abstract draft with [1][2][3]... which I removed).
+
+Fix: add citation markers in §2.1 (①②③) and keep abstract free of them.
+
+Let me patch §2.1 sentences to append [1], [2], [3].
+
+Then rebuild, check, verify page 2 image, commit, push, reopen.
+
+Let me look at the abstract image too.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"report/REPORT.md\"; s=io.open(p,encoding=\"utf-8\").read()\ndef rep(a,b):\n    global s\n    assert a in s, a[:40]\n    s=s.replace(a,b,1)\nrep(\"它的结论是，在前途未卜的写失败上，只有让每次写入都接受一个幂等键才能收口\",\n    \"它的结论是，在前途未卜的写失败上，只有让每次写入都接受一个幂等键才能收口[1]\")\nrep(\"只有带已提交效应账本的策略能恢复。\", \"只有带已提交效应账本的策略能恢复[2]。\")\nrep(\"而 step 级“相对于无崩溃对照组没有统计显著的增加”。\", \"而 step 级“相对于无崩溃对照组没有统计显著的增加”[3]。\")\nio.open(p,\"w\",encoding=\"utf-8\").write(s)\nprint(\"引用已补\")\nPY\npython -c \"\nimport win32com.client as win32\ntry:\n    w=win32.GetActiveO …（省略 558 字符）
+```
+
+<details><summary>📤 工具返回（444 字符）</summary>
+
+```
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx (454 KB), 18 ҳ, pdf=C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+   - �ο����� [1] δ�����ı�����
+   - �ο����� [2] δ�����ı�����
+   - �ο����� [3] δ�����ı�����
+pages 18
+[stderr]
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+  File "<stdin>", line 5, in rep
+AssertionError: ���Ľ����ǣ���ǰ;δ����дʧ���ϣ�ֻ����ÿ��д�붼����һ���ݵȼ������տ�
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+The first replacement failed because of quoting differences (the actual text has different quotes: “前途未卜的写失败”). My assertion used straight quotes? The error shows the string with " " (Chinese quotes) — my Python string used "..." ASCII? I wrote it with 「? No, I typed ASCII double quotes inside a single-quoted? The heredoc uses PY heredoc with double quotes inside — bash may have mangled.
+
+Since assertion failed, no edits applied. Let me instead use regex to append [n] after specific sentences without quoting the Chinese punctuation.
+
+Approach: find the line containing "才能收口" and append "[1]" before the sentence-ending "。"? Simpler: replace "才能收口。" with "才能收口[1]。" using a regex on the line.
+
+But the failure was because my literal didn't match — likely because of the quote characters around 前途未卜. Let me just target short unique fragments:
+- "才能收口" → "才能收口[1]"
+- "策略能恢复" → "策略能恢复[2]"
+- "没有统计显著的增加" → "没有统计显著的增加[3]"
+
+Those avoid quotes entirely.
+
+Let me check they're unique and apply.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && python - <<'PY'\nimport io\np=\"report/REPORT.md\"; s=io.open(p,encoding=\"utf-8\").read()\nfor frag, mark in ((\"才能收口\",\"[1]\"), (\"策略能恢复\",\"[2]\"), (\"没有统计显著的增加\",\"[3]\")):\n    i = s.find(frag)\n    assert i > 0, frag\n    if s[i+len(frag):i+len(frag)+3].startswith(\"[\"):\n        continue\n    s = s[:i+len(frag)] + mark + s[i+len(frag):]\n    print(\"已加\", mark, \"到\", frag)\nio.open(p,\"w\",encoding=\"utf-8\").write(s)\nPY\npython -c \"\nimport win32com.client as win32\ntry:\n    w=win32.GetActiveObject('Word.Application')\n     …（省略 183 字符）
+```
+
+<details><summary>📤 工具返回（266 字符）</summary>
+
+```
+�Ѽ� [1] �� �����տ�
+�Ѽ� [2] �� �����ָܻ�
+�Ѽ� [3] �� û��ͳ������������
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx (454 KB), 18 ҳ, pdf=C:\Users\G15\AppData\Local\Temp\dsh-win-bash-1220-66f2aca4\REPORT_final.pdf
+���� 27 KB / docx 454 KB
+
+[OK] ȫ�����ͨ��
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\a3.png"}
+```
+
+<details><summary>📤 工具返回（141 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\a3.png</path>
+<type>image</type>
+<content>
+image/png image, 1034x1462 px, 193149 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+The abstract now:
+- One page (i) ✓
+- No bold anywhere ✓
+- Uniform 12pt, 1.5 spacing, 首行缩进 2 字符 ✓
+- Numbered items without bullets ✓
+
+Everything the user asked for. 
+
+Now commit + push + reopen Word.
+
+Also update check.py abstract assertions? It checks for "6.60","6.75","6.82","6.68","0.134","19.9","25.8","98.0" in abstract — all present ✓ (check passed).
+
+Let me finish: cleanup png, chatlog, commit, push, open Word.
+
+Then summarize: 摘要一页、正文无粗体、页数 18.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && rm -f a3.png\nbash tools/update_chatlog.sh 2>&1 | tail -2\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"摘要压缩到一页；正文与摘要内容取消加粗；补文献引用标记\"\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git push -q origin main 2>&1 | grep -vE \"^(bash.exe|remote:)\" | tail -1\nGIT_SSH_COMMAND=\"ssh -o BatchMode=yes\" git ls-remote --heads origin 2>/dev/null | cut -c1-12\npython - <<'EOF'\nimport os, win32com.client as win32\nw = win32.Dispatch(\" …（省略 191 字符）
 ```
