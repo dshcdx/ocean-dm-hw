@@ -445,8 +445,11 @@ def render_blocks(doc, blocks):
             cap, path = payload
             full = os.path.normpath(os.path.join(ROOT, "report", path))
             if os.path.exists(full):
-                doc.add_picture(full, width=Cm(14.6))
-                doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                doc.add_picture(full, width=Cm(13.6))
+                pic_par = doc.paragraphs[-1]
+                pic_par.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                pic_par.paragraph_format.keep_with_next = True
+                pic_par.paragraph_format.space_before = Pt(6)
             p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p.paragraph_format.space_after = Pt(8)
             p.paragraph_format.line_spacing = 1.0
@@ -493,6 +496,18 @@ def render_blocks(doc, blocks):
             cn(p.add_run(f"\t（{cur_chapter}.{eq_seq}）"), "宋体", BODY)
         else:
             text = payload
+            if text.startswith("@@BOLD@@"):
+                body = text[len("@@BOLD@@"):]
+                label, _, rest = body.partition("：")
+                p = doc.add_paragraph()
+                p.paragraph_format.first_line_indent = Cm(0.85)
+                p.paragraph_format.line_spacing = 1.5
+                p.paragraph_format.space_before = Pt(0)
+                p.paragraph_format.space_after = Pt(0)
+                p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+                cn(p.add_run(label + "："), "宋体", BODY, True)
+                add_runs(p, rest, "宋体", BODY, strip_bold=True)
+                continue
             if text.startswith("[待补]"):
                 p = doc.add_paragraph()
                 p.paragraph_format.left_indent = Cm(0.6)
