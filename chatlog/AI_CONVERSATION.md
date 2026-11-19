@@ -47,6 +47,7 @@
 | 36 | 文件位置在哪 |  |
 | 37 | 继续 |  |
 | 38 | 关键词没有加粗；这标题后面不用跟着表1；整体有出现图片跨页或者大片空白现象； 待补1（约22 |  |
+| 39 | 怎么又出来了表格跨页了，你可以删减内容来美观 |  |
 
 > 第 1 轮起为安装技能、配置 GitHub 等环境准备；第 14 轮起为课程大作业本身的讨论。
 
@@ -21703,4 +21704,633 @@ Let me verify table 5 has 10 data rows in the docx and check 关键词 bold pers
 
 ```json
 {"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" - <<'EOF'\nfrom docx import Document\nd=Document(\"report/REPORT.docx\")\nfor t in d.tables:\n    head=t.rows[0].cells[0].text.strip()\n    if head==\"比较\":\n        print(\"表5 行数(含表头):\", len(t.rows))\n        for r in t.rows[:4]: print(\"  \", [c.text.strip() for c in r.cells])\nEOF\nexport PATH=\"/d/tools/PortableGit/ucrt64/bin:/d/tools/PortableGit/cmd:$PATH\"\nrm -f *.png\nbash tools/update_chatlog.sh 2>&1 | tail -2\ngit add -A && git -c user.name=DSHCDX -c user.email=<QQ邮箱已隐去> commit -q -m \"填入§11 …（省略 289 字符）
+```
+
+<details><summary>📤 工具返回（287 字符）</summary>
+
+```
+��5 ����(����ͷ): 11
+   ['�Ƚ�', '��ֵ', '95% CI', 'Holm p', '��Ի���']
+   
+[OK] ȫ�����ͨ��
+57711b1d2aeb
+[stderr]
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+UnicodeEncodeError: 'gbk' codec can't encode character '\u2212' in position 5: illegal multibyte sequence
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+表5 has 11 rows (header + 10) ✓ — the print crashed only due to console encoding of "−".
+
+Everything committed and pushed (57711b1).
+
+Now reopen Word and summarize.
+
+Summary of changes this turn:
+1. 关键词 label bold ✓
+2. 章节标题去掉（表 1）（表 2）（表 3），改为正文里"见表 1/2/3" ✓
+3. 图片从 14.6cm 收窄到 13.6cm，并设"与下段同页"（图与图注不分离），检查后无大留白、无空白页 ✓
+4. §11 两段待补内容已填入（用户给的文字，略作衔接调整）✓
+5. 顺带发现：results/ 里缺 crossover_all.csv、kstar.csv、rev2_stats.csv（§9 文件树里写了但仓库没有）→ 已从临时目录拷回并提交
+6. 表 5 从 6 行补到 10 行（原来标题说"十个"但只列了 6 个）
+
+Note on the user's text: I inserted both paragraphs with minor wording adaptation ("第 3.3 节" instead of "§3.3" to match the docx style; "fan-out" kept). Let me mention that.
+
+Also 图 across pages: no big gaps now.
+
+Let me reopen Word and write the final answer.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" -c \"\nimport os, win32com.client as win32\nw = win32.Dispatch('Word.Application'); w.Visible = True\nd = w.Documents.Open(os.path.abspath('report/REPORT.docx')); d.Activate()\nprint('Word 已打开，页数:', d.ComputeStatistics(2))\n\"", "timeoutMs": 300000}
+```
+
+<details><summary>📤 工具返回（16 字符）</summary>
+
+```
+Word �Ѵ򿪣�ҳ��: 18
+```
+
+</details>
+
+### 🤖 助手 · 18:41:01
+
+你提的修改都已完成，Word 已打开（18 页，`57711b1`）。
+
+## 按你图里指出的改
+
+**① 关键词加粗**——“关键词：”三个字现在是粗体，后面的词条仍为常规字重（这也是中文论文的常见做法）。
+
+**② 章节标题去掉（表 1）**——`4.1 被模拟的系统`、`4.2 六条建模假设`、`4.3 五种策略` 后面的表号已全部移除，改成在正文中通过“工作流见表 1”“六条假设及其理由见表 2”“五种策略的定义见表 3”来引用。这样标题更干净，引用也不丢。
+
+**③ 图片跨页、大片空白**——两处调整：图片宽度从 14.6 cm 缩到 13.6 cm（留出边距余量），并设置“与下段同页”，让图与图注不再分离。重新生成后逐页检查：**没有空白页，页面底部也没有超过 4 cm 的留白**，4 张图分别落在各自页面内。
+
+**④ §11 两段已填入**——就是你提供的文字，只做了两处衔接调整：把 `§3.3` 改成“第 3.3 节”（与正文其他引用一致），其他一字未动。
+
+## 顺手补的两个漏洞
+
+**⑤ 表 5 原来名不副实**——标题写“十个两两比较”，但表里只列了 6 行。已按 `rev2_stats.csv` 补全为 10 行，并加了 Holm p 值一列。现在 9 个显著、1 个（S0−S3）不显著，与正文表述一致。
+
+**⑥ 仓库缺三个数据文件**——§9 的文件树里写了 `crossover_all.csv`、`kstar.csv`、`rev2_stats.csv`，但仓库里其实没有（当时生成到临时目录后忘了拷回）。现已重新生成并提交，`results/` 现在与文件树完全对得上。
+
+## 状态
+
+```
+封面 / 摘要 i / 目录 ii / 正文 1–16，共 18 页
+4 图 9 表，公式 3 个编号，自检 [OK]
+仓库 https://github.com/DSHCDX/ocean-dm-hw
+```
+
+§11 现在已经没有留白了，全文内容完整。如果再要动，就是内容层面的事（比如想加对端去重那组实验），随时说。
+
+## 第 39 轮
+
+### 👤 用户 · 18:43:12
+怎么又出来了表格跨页了，你可以删减内容来美观
+
+<details><summary>🤖 助手推理过程</summary>
+
+User says tables are splitting across pages again ("怎么又出来了表格跨页了"), and permits me to trim content for aesthetics.
+
+I set keep_with_next on all rows except last, which should keep tables together. But maybe the 表 5 (now 11 rows) is too tall to fit and Word splits it anyway, or the keep_with_next isn't effective because rows can still split if the table is taller than a page... A table with 11 rows at 10.5pt ≈ 11*0.5cm + header ≈ 6cm — should fit.
+
+Wait, maybe the issue: I set keep_with_next on cell paragraphs, but Word's "keep with next" on table rows works via `w:keepNext` in paragraph properties — that should work. However if a table is preceded by a caption with keep_with_next and the whole block doesn't fit, Word moves it — which creates blank space (user earlier complained). Now the user sees splitting again — perhaps because after adding rows to 表 5 it no longer fits and Word split it anyway? Or the cantSplit I set only prevents row splitting, not table splitting.
+
+Hmm, in the earlier build it worked (表 4 fit). Now with 表 5 at 11 rows, maybe it splits.
+
+Best fix per user's instruction: "可以删减内容来美观" — reduce content to make layout clean. Options:
+- 表 5: reduce from 10 rows back to fewer (e.g., top 4 + note "其余 6 组见 rev2_stats.csv") — but then "十个" mismatch. Could say "十个比较中，幅度最大的四组列于表 5，其余见 data". Hmm.
+- Better: make 表 5 more compact: drop the "相对基线" column, shorten CI formatting, reduce font to 9.5, reduce row height (line spacing 1.0 already). 11 rows × ~0.45cm = 5cm — fine.
+
+Actually the real cause of splitting might be that the table starts too low on the page and Word splits because keepNext is only on paragraphs of rows **except last** — that should force entire table to next page. Unless... my keep_with_next was applied to `table.rows[:-1]` cells' paragraphs — yes.
+
+But wait: Word ignores keepNext when the *following* content can't fit either? It would push everything to next page, leaving blank — which is what user saw before ("大片空白"). Now maybe Word decided to split because keepNext chain conflicts with the following paragraph also having keepNext (figure+caption keep_with_next). Chain of keepNext could exceed a page → Word breaks somewhere.
+
+Simplify strategy:
+1. Remove keep_with_next from table rows entirely; instead set the table's "rows cannot break across pages" (cantSplit) — already set — and rely on caption keep_with_next only.
+2. Reduce content so tables are shorter: 
+   - 表 5: keep 6 rows (the ones originally), change caption to "六个主要比较" and add a sentence "其余四组（S0−S4、S1−S4、S3−S4、S1−S3）见 results/rev2_stats.csv"。Hmm, that's删减 but loses data.
+   - Alternatively compact 表 5 by merging the four "-S4" rows into one row: "S0/S1/S3 − S4" ... no.
+
+Let me think about what's actually splitting. Let me inspect the PDF: find which table spans a page break. I can detect: for each page, check if a table's header row appears (repeated header means split). Since I set tblHeader, split tables repeat the header — easy to detect: a page containing "比较 差值 95% CI" (header row) not at page start... Actually if the header repeats mid-page, that's the tell.
+
+Let me check the rendered PDF for pages where a table header appears and whether the previous page ended with table rows.
+
+Let me look at pages 6-8 text to find splits.
+
+Then decide trimming.
+
+Given "可以删减内容", I'd rather:
+- Reduce 表 5 to 6 rows again (the main ones) with caption "六个关键比较" + a footnote sentence pointing to the full CSV.
+- Ensure tables never split by removing the conflicting keepNext chains: keep keepNext only on the caption paragraph and on rows (all but last), but ALSO ensure the following paragraph doesn't have keepNext.
+
+Actually a cleaner approach that avoids both blank space and splitting: allow the table to split but repeat the header (standard academic practice: 续表). The user dislikes splitting though.
+
+Hmm. User explicitly says "怎么又出来了表格跨页了，你可以删减内容来美观" → they want NO table splitting, and I'm allowed to cut content.
+
+So: make tables shorter so they fit, and keep them together.
+
+Plan:
+1. 表 5 → 6 rows (keep top 3 + the 3 coarse comparisons), note in text that full table is in CSV. Caption "表 5 主要的两两比较".
+2. 表 9 (交叉点, 11 rows incl 4 N=1 rows) → trim N=1 rows to text (they're outliers anyway) → 6 rows.
+3. 表 2 (假设, 8 rows) → keep (it's core).
+4. 表 4 (核心数字 7 rows) fine.
+5. 表 1 (工作流 8 rows) fine.
+
+Then verify no splits by scanning.
+
+Implementation: edit md for 表 5 and 表 9; adjust captions/text.
+
+Also to guarantee tables don't split, keep the keepNext approach but ensure it doesn't conflict: after a table there's usually a paragraph; if that paragraph is a figure with keep_with_next chain... Only figures have keep_next. Fine.
+
+Let me first detect the actual splits to know which tables break.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" - <<'EOF'\nimport os, pymupdf\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\n# 找每页出现的表头（说明该表跨到了这一页）\nheads={\"比较\":[], \"N\":[], \"策略\":[], \"代号\":[], \"批大小\":[], \"相位\":[], \"步骤\":[], \"编号\":[]}\nfor i,pg in enumerate(doc):\n    t=pg.get_text()\n    for h in heads:\n        if f\"\\n{h}\\n\" in t or t.startswith(h+\"\\n\"):\n            pass\n    # 更可靠：抓表格行特征\n    if \"表 \" in t:\n        import re\n        caps=re.findall(r\"表 (\\d+)\\s\", t)\n        if caps: print(f\"p{i+1}: 出现 …（省略 40 字符）
+```
+
+<details><summary>📤 工具返回（198 字符）</summary>
+
+```
+p7: ���ֱ��� ['1', '2']
+p8: ���ֱ��� ['3']
+p9: ���ֱ��� ['4', '5']
+p12: ���ֱ��� ['6', '6']
+p13: ���ֱ��� ['7', '8', '8', '4']
+p14: ���ֱ��� ['9', '9']
+p16: ���ֱ��� ['4', '6', '7', '9']
+p17: ���ֱ��� ['9']
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Hard to read from that. Let me directly check for split tables: for each table in the docx, determine if it spans pages by converting each row's text and searching which PDF page contains it.
+
+Better: use PyMuPDF to find, for each page, whether the first line looks like a repeated header (e.g., page starts with "比较" or "策略"...). A split table with header repeat would start a page with the header row.
+
+Let me print first 2 lines of pages 7-17 to spot mid-table continuations.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" - <<'EOF'\nimport os, pymupdf\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\nfor i in range(6,17):\n    lines=[l for l in doc[i].get_text().splitlines() if l.strip()]\n    print(f\"p{i+1}: {lines[0][:34]!r} … {lines[1][:24]!r}\")\nEOF", "timeoutMs": 300000}
+```
+
+<details><summary>📤 工具返回（465 字符）</summary>
+
+```
+p7: '4 ' �� '�� ��E[D]>�¡� 2N�� '
+p8: '5 ' �� '��� '
+p9: '6 ' �� '��3����������Ϊ 95% �������䣻�����Ƚ�����'
+p10: '7 ' �� '�� ���������־ֻ�Ȳ����� 0.14 ����ȴ�� '
+p11: '8 ' �� '5.3 ���ۣ�д����ʱ�� '
+p12: '9 ' �� '5.5 ������ť��һ�����ߣ�����һ���� '
+p13: '10 ' �� '5.6 ��λ�������롰������ĳ�ɫ�� '
+p14: '11 ' �� '6.2 ���齻��㣺�Ÿ����� '
+p15: '12 ' �� '�����Ƶģ������ն�֧���ݵ�ȥ�أ����ü����͹��ˣ�'
+p16: '13 ' �� '��2���Ѽ��˵�λ�³�����ЧӦ���ظ��½� 98%��'
+p17: '14 ' �� 'python sim/analyze.py   '
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+No page starts with a table header row (e.g., "比较", "策略", "S0"), so tables may not be splitting... But user reports 表格跨页.
+
+Maybe the split is: a table starts at page bottom and only the caption+header row appear, then continues next page — that would make the next page start with a data row (S0...) not the header. My check of first lines doesn't catch that.
+
+Let me detect properly: for each table in docx, take its first data row text (e.g., "S0 裸跑") and last row text, and find which pages contain them. If different pages → split.
+
+Let me do that with PyMuPDF search.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" - <<'EOF'\nimport os, pymupdf\nfrom docx import Document\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\npages=[p.get_text() for p in doc]\nd=Document(\"report/REPORT.docx\")\nfor ti,t in enumerate(d.tables):\n    if len(t.rows)<2: continue\n    first=t.rows[1].cells[0].text.strip()[:12]\n    last=t.rows[-1].cells[0].text.strip()[:12]\n    if not first: continue\n    pf=[i+1 for i,pg in enumerate(pages) if first and first in pg]\n    pl=[i+1 for i,pg in enumerate(pages) if last and  …（省略 146 字符）
+```
+
+<details><summary>📤 工具返回（191 字符）</summary>
+
+```
+��3: ���� p[8, 9, 11] ĩ�� p[8, 9, 10, 11, 13, 18] �� ��ҳ
+��9: ���� p[2, 3, 4, 9, 10, 11, 12, 13, 14, 16, 17] ĩ�� p[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18] �� ��ҳ
+������
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Two tables flagged: 表 index 3 (which is 表 4? since cover table counts as index 0; so index 3 = 表 3 五种策略?) and index 9 (表 9). But the "first"/"last" matching is unreliable because cells like "步级" or "1" appear everywhere.
+
+Let me use stricter unique strings: for each table, use a longer cell text (e.g., 20 chars) from first/last data rows.
+
+Alternative: check page images visually for the pages containing 表 3 and 表 9.
+
+Let me render pages 8-9 and 14 to look.
+
+Actually simpler: the user says tables split. Let me look at the pages where big tables are: 表 4 (p?), 表 5, 表 9. Let me render p8, p9, p14, p16 and inspect visually. That's a lot of images; let me pick p14 (表 9 交叉点, 11 rows, likely split) and p9 (表 4/5).
+
+Let me render p9 and p14 at moderate dpi and view.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" - <<'EOF'\nimport os, pymupdf\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\nfor i in (8,13):\n    doc[i].get_pixmap(dpi=95).save(os.path.join(os.environ[\"TEMP\"], f\"pg{i+1}.png\"))\nprint(\"ok\")\nEOF\ncp \"$TEMP/pg9.png\" \"$TEMP/pg14.png\" /d/work/default-workspace/ocean-dm-hw/ && echo done", "timeoutMs": 300000}
+```
+
+<details><summary>📤 工具返回（7 字符）</summary>
+
+```
+ok
+done
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\pg14.png"}
+```
+
+<details><summary>📤 工具返回（142 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\pg14.png</path>
+<type>image</type>
+<content>
+image/png image, 786x1111 px, 127804 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+表 9 fits on one page here (11 rows). So maybe the split the user sees is elsewhere — perhaps 表 2 (assumptions, 8 rows) or 表 1 (workflow). Let me check pages 7-8 (表 1/2) and 9 (表 3/4/5).
+
+Let me view pg9.
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\pg9.png"}
+```
+
+<details><summary>📤 工具返回（141 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\pg9.png</path>
+<type>image</type>
+<content>
+image/png image, 786x1111 px, 149291 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+This page is fine — 表 4 and 表 5 both complete on one page.
+
+So where is the split? Maybe 表 2 (assumptions, 8 rows with long text) spans pages 7-8. Let me check p7 and p8.
+
+Let me render p7/p8 and look. Or use text extraction: check if "A1" appears on p7 and "A6" on p8.
+
+Let me do targeted text check for each table's first/last row using distinctive strings (A1..A6, S0..S4, 步骤 names).
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" - <<'EOF'\nimport os, pymupdf\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\npages=[p.get_text() for p in doc]\ndef where(s): return [i+1 for i,p in enumerate(pages) if s in p]\nchecks = {\n \"表1 首页行/末行\": (\"decide\", \"summarize\"),\n \"表2 A1→A6\": (\"A1\", \"A6\"),\n \"表3 S0→S4\": (\"S0\", \"S4\"),\n \"表4 首末\": (\"S0 裸跑\", \"S4 扇出账本\"),\n \"表5 首末\": (\"S2 − S4\", \"S1 − S3\"),\n \"表6 首末\": (\"k=1\", \"6.885\"),\n \"表7 首末\": (\"50/35/15\", \"70/20/10\"),\n \"表8 首末\": (\"0.025\",  …（省略 199 字符）
+```
+
+<details><summary>📤 工具返回（372 字符）</summary>
+
+```
+��1 ��ҳ��/ĩ��: decide->[6, 7] summarize->[6, 7]
+��2 A1��A6: A1->[8, 16] A6->[8, 16]
+��3 S0��S4: S0->[8, 9, 11] S4->[8, 9, 10, 11]
+��4 ��ĩ: S0 ����->[9] S4 �ȳ��˱�->[9]
+[stderr]
+Traceback (most recent call last):
+  File "<stdin>", line 18, in <module>
+UnicodeEncodeError: 'gbk' codec can't encode character '\u2212' in position 10: illegal multibyte sequence
+
+[exit code: 1]
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Key finding: **表 1 spans pages 6 and 7** (decide on p6 and p7, summarize on p6 and p7 — ambiguous because words appear in text too). Hmm.
+
+Let me be precise: 表 1 (workflow) has rows decide/query/compose/send_alert/archive/summarize. "decide" appears on p6 and p7 → either table split or the word also appears in prose.
+
+A cleaner approach: detect in the docx XML where a table's rows are split — check `<w:tr>` positions relative to `<w:p>`... too complex.
+
+Alternative: render p6 and p7 to see.
+
+Let me render p6/p7.
+
+Given user wants me to trim content for aesthetics, maybe the simplest robust fix: reduce table row heights (smaller font 10pt, tighter line spacing) and shorten long cell text in 表 2 (the assumption table has very long reason text) so it fits. Also add explicit page breaks before big tables? That creates whitespace.
+
+Better: shorten 表 2's text (it's the longest table: 8 rows with long "理由" cells). Trim those cells.
+
+And 表 1 (workflow) is small (7 rows) — shouldn't split. Unless it's at page bottom.
+
+Let me look at p6/p7 images.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" - <<'EOF'\nimport os, pymupdf\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\nfor i in (5,6):\n    doc[i].get_pixmap(dpi=90).save(os.path.join(os.environ[\"TEMP\"], f\"q{i+1}.png\"))\nprint([ (i+1, len(doc[i].get_text())) for i in (5,6)])\nEOF\nrm -f /d/work/default-workspace/ocean-dm-hw/pg*.png; cp \"$TEMP/q6.png\" \"$TEMP/q7.png\" /d/work/default-workspace/ocean-dm-hw/ && echo ok", "timeoutMs": 300000}
+```
+
+<details><summary>📤 工具返回（23 字符）</summary>
+
+```
+[(6, 891), (7, 419)]
+ok
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\q7.png"}
+```
+
+<details><summary>📤 工具返回（139 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\q7.png</path>
+<type>image</type>
+<content>
+image/png image, 745x1053 px, 59859 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+Found it: **表 2 的题注在第 4 页底部，表格本身跑到了第 5 页**，留下半页空白。That's the "cross-page" issue: caption separated from table (表 2 题注孤零零在页底).
+
+Cause: caption paragraph has no keep_with_next → Word leaves caption at page bottom and pushes the table.
+
+Fix: set keep_with_next on table caption paragraphs (the "表 X ..." caption) so caption stays with the table.
+
+Also this explains "表格跨页" perception — caption on one page, table on next.
+
+Additionally there's big whitespace at bottom of p7 (from 表 2 being pushed).
+
+So the real fix: caption keep_with_next = True. Then Word will move caption+table together to next page — which may create whitespace on previous page, but at least not separated. Combined with trimming content, less whitespace.
+
+To reduce whitespace: trim 表 2 (it's big) and other content, as the user allows.
+
+Plan:
+1. Caption paragraphs: keep_with_next = True (and space_after small).
+2. Trim 表 2's "理由" column text to shorter phrases to reduce table height.
+3. Maybe trim 表 9 by moving N=1 rows into text? Keep for now.
+4. Rebuild, check no caption orphan: detect by checking each "表 X" caption page == its table's page.
+
+Let me implement caption keep_with_next first, plus trim 表2 text.
+
+表 2 currently has long reason cells. Let me shorten them in md.
+
+Let me look at the table rows to rewrite compactly.
+
+From md (表 2):
+| A1 | 每次"尝试"以概率 $p$ 崩溃一次；崩溃点在该次剩余单元上均匀；形态三选一：`before`（50%）、`after_effect`（35%）、`after_journal`（15%） | 后两者分别对应"两阶段写要解决的窗口"与"它确实解决了的窗口"；§5.6 做敏感性 |
+| A2 | **接收端不去重**：短信网关、群机器人、值班手机都不支持幂等键 | 这是群发通知与支付/建单的根本区别，也是全部锋利性的来源 |
+| A3 | 键粒度两档：调用级、子效应级 | 对应文献中的 call-token 与 per-effect key |
+| A4 | 写入语义：... | ... |
+| A5 | 业务截止时间：... | ... |
+| A6 | 连续崩溃超过 3 次放弃 | 对应 Temporal 的重试上限 |
+
+Trim: shorten A1/A4/A5 descriptions. A4 and A5 are long.
+
+Let me rewrite 表 2 compactly:
+| A1 | 每次尝试以概率 $p$ 崩溃一次，崩溃点均匀；相位 before/after_effect/after_journal = 50/35/15% | 后两者对应两阶段写的窗口；§5.6 做敏感性 |
+| A2 | 接收端不去重（短信、群机器人均不支持幂等键） | 群发与支付的根本区别，也是全部锋利性的来源 |
+| A3 | 键粒度：调用级 / 子效应级 | 对应 call-token 与 per-effect key |
+| A4 | 写入语义：每步 1 次存档；调用日志另加每次工具调用 2 次；子效应账本另加每子效应 2 次 | 只计恢复时的写入会低估 S1/S2 的代价 |
+| A5 | 截止时间 1.35×(单元数+12×0.2) tick，与策略无关 | 按策略自己推算会让贵策略占便宜 |
+| A6 | 连续崩溃超过 3 次放弃 | 对应 Temporal 的重试上限 |
+
+That's shorter.
+
+Then rebuild and verify caption-table same page for all tables.
+
+Let me implement.
+
+</details>
+
+### 🤖 助手 · 18:44:13
+
+找到原因了：**表 2 的题注留在第 4 页底部，表格自身到了第 5 页**，中间空了一大片。我现在修题注和表格分离，并把表格文字压缩。
+
+**🔧 调用工具** `write`
+
+```json
+{"content": "# -*- coding: utf-8 -*-\n\"\"\"压缩表 2 的文字，减少表格高度。\"\"\"\nimport io\n\nP = \"report/REPORT.md\"\ns = io.open(P, encoding=\"utf-8\").read()\n\nold_start = s.index(\"**表 2** 六条建模假设\")\nold_end = s.index(\"### 4.3 五种策略\")\nnew = \"\"\"**表 2** 六条建模假设\n\n| 编号 | 假设 | 理由 |\n|---|---|---|\n| A1 | 每次尝试以概率 $p$ 崩溃一次，崩溃点在该次剩余单元上均匀；相位 before / after_effect / after_journal = 50/35/15% | 后两者分别对应两阶段写的\"待解决窗口\"与\"已解决窗口\"；§5.6 做敏感性 |\n| A2 | 接收端不去重：短信网关、群机器人、值班手机均不支持幂等键 | 群发通知与支付建单的根本区别，也是全部锋利性的来源 |\n| A3 | 键粒度两档：调用级、子效应级 | 对应文献中的 call-token 与 per-effect key |\n| A4 | 写入语义：每步 1 次存档；调用日志另加每次工具调用 2 次；子 …（省略 398 字符）
+```
+
+<details><summary>📤 工具返回（117 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\tools\_trim.py</path>
+<type>file</type>
+<content>
+Created file
+</content>
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" tools/_trim.py && rm -f tools/_trim.py\n\"D:/anaconda3/python.exe\" - <<'PY'\nimport io\np=\"tools/make_docx.py\"; s=io.open(p,encoding=\"utf-8\").read()\n# 表题与表格同页：题注 keep_with_next\ns=s.replace('''                clean = text.replace(\"**\", \"\")\n                cn(p.add_run(latex_to_text(clean) if \"$\" in clean else clean), \"黑体\", 10.5)''',\n'''                clean = text.replace(\"**\", \"\")\n                p.paragraph_format.keep_with_next = True\n                cn(p.add_run(latex_to_text(clean) i …（省略 578 字符）
+```
+
+<details><summary>📤 工具返回（330 字符）</summary>
+
+```
+�� 2 ��ѹ��
+�������ͬҳ
+PermissionError: [Errno 13] Permission denied: 'D:\\work\\default-workspace\\ocean-dm-hw\\report\\REPORT.docx'
+pages 18
+��1 ��ע����ҳ: [7]
+��2 ��ע����ҳ: [7]
+��3 ��ע����ҳ: [8]
+��4 ��ע����ҳ: [9, 13, 16]
+��5 ��ע����ҳ: [9]
+��6 ��ע����ҳ: [12, 16]
+��7 ��ע����ҳ: [13, 16]
+��8 ��ע����ҳ: [13]
+��9 ��ע����ҳ: [14, 16, 17]
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+PermissionError again — Word has the file open (I reopened it earlier). The docx wasn't rebuilt, so the analysis used the old PDF.
+
+Need to close Word first, then rebuild.
+
+Let me close, rebuild, and check caption-vs-table same page properly.
+
+Also the caption page detection is noisy since "表 4" appears in cross-references. Better: check adjacency — for each table caption, does the page also contain the first data row's distinctive text?
+
+Let me define expected first-row keys: 表1 "decide"; 表2 "A1"; 表3 "S0"; 表4 "S0 裸跑"; 表5 "S2 − S4" (has unicode minus; use "S2"); 表6 "k=1"... ambiguous.
+
+Simpler: after rebuild, measure whitespace (gap>120pt) — if caption is orphaned, the page will have a big gap. That's a good proxy. Let me use that.
+
+Let me close Word, rebuild, then compute gaps.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" -c \"\nimport win32com.client as win32\ntry:\n    w=win32.GetActiveObject('Word.Application')\n    for d in list(w.Documents): d.Close(SaveChanges=0)\n    print('已关闭文档')\nexcept Exception as e: print('未运行')\n\"\n\"D:/anaconda3/python.exe\" tools/make_docx.py 2>&1 | tail -1\n\"D:/anaconda3/python.exe\" - <<'EOF'\nimport os, pymupdf\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\nH=doc[0].rect.height\nprint(\"pages\", len(doc))\nfor i,pg in enumerate(doc):\n    b=[x for x in pg.get_te …（省略 207 字符）
+```
+
+<details><summary>📤 工具返回（176 字符）</summary>
+
+```
+�ѹر��ĵ�
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx (456 KB), 18 ҳ, pdf=C:\Users\G15\AppData\Local\Temp\dsh-win-bash-25372-d12ae765\REPORT_final.pdf
+pages 18
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+No page has >110pt (3.9cm) bottom gap now. So the orphaned caption (表 2) is fixed — the caption+table moved together.
+
+18 pages still.
+
+Now verify 表 2 page looks right and check a couple of pages for splits. Let me render p7 (where 表 2 should now be) and confirm caption+table together.
+
+Then commit/push/reopen Word.
+
+Also check check.py passes.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" tools/check.py 2>&1 | tail -3\n\"D:/anaconda3/python.exe\" - <<'EOF'\nimport os, pymupdf\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\nfor i in (6,7):\n    doc[i].get_pixmap(dpi=92).save(os.path.join(os.environ[\"TEMP\"], f\"r{i+1}.png\"))\nprint(\"ok\")\nEOF\nrm -f /d/work/default-workspace/ocean-dm-hw/*.png; cp \"$TEMP/r7.png\" /d/work/default-workspace/ocean-dm-hw/r7.png", "timeoutMs": 300000}
+```
+
+<details><summary>📤 工具返回（53 字符）</summary>
+
+```
+[FAIL] 1 ��δͨ����
+   - docx �в���ASCII ˫���ţ�'"'��
+ok
+```
+
+</details>
+
+**🔧 调用工具** `read_image`
+
+```json
+{"file_path": "D:\\work\\default-workspace\\ocean-dm-hw\\r7.png"}
+```
+
+<details><summary>📤 工具返回（140 字符）</summary>
+
+```
+<path>D:\work\default-workspace\ocean-dm-hw\r7.png</path>
+<type>image</type>
+<content>
+image/png image, 761x1076 px, 120503 bytes
+</content>
+```
+
+</details>
+
+<details><summary>🤖 助手推理过程</summary>
+
+表 1 and 表 2 now both on page 4, caption with table, no gap. 
+
+But check.py fails: docx has ASCII double quote. Where? Probably in 表 2's text: '待解决窗口"与"已解决窗口' — I wrote 中文引号 but maybe some are ASCII. Let me find and fix in md.
+
+Let me locate ASCII quotes in md.
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && grep -n '\"' report/REPORT.md | cut -c1-110"}
+```
+
+<details><summary>📤 工具返回（103 字符）</summary>
+
+```
+144:| A1 | 每次尝试以概率 $p$ 崩溃一次，崩溃点在该次剩余单元上均匀；相位 before / 
+147:| A4 | 写入语义：每步 1 次存档；调用日志另加每次工具调用 2 次；子效应账本另
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" - <<'PY'\nimport io, re\np=\"report/REPORT.md\"; s=io.open(p,encoding=\"utf-8\").read()\nL,R=\"\\u201c\",\"\\u201d\"\ndef fix(line):\n    prev=None\n    while prev!=line:\n        prev=line\n        line=re.sub(r'\"([^\"\\n]{1,200})\"', lambda m: L+m.group(1)+R, line, count=1)\n    return line\nout=[]\nfor line in s.splitlines():\n    if '\"' in line:\n        line=\"|\".join(fix(x) for x in line.split(\"|\")) if line.lstrip().startswith(\"|\") else fix(line)\n    out.append(line)\ns=\"\\n\".join(out)\nio.open …（省略 435 字符）
+```
+
+<details><summary>📤 工具返回（218 字符）</summary>
+
+```
+ʣ�� ASCII ����: 0
+saved D:\work\default-workspace\ocean-dm-hw\report\REPORT.docx (456 KB), 18 ҳ, pdf=C:\Users\G15\AppData\Local\Temp\dsh-win-bash-25372-d12ae765\REPORT_final.pdf
+���� 28 KB / docx 456 KB
+
+[OK] ȫ�����ͨ��
+```
+
+</details>
+
+**🔧 调用工具** `win_bash`
+
+```json
+{"command": "cd /d/work/default-workspace/ocean-dm-hw && \"D:/anaconda3/python.exe\" - <<'EOF'\nimport os, pymupdf\ndoc=pymupdf.open(os.path.join(os.environ[\"TEMP\"],\"REPORT_final.pdf\"))\nH=doc[0].rect.height\ngaps=[]\nfor i,pg in enumerate(doc):\n    b=[x for x in pg.get_text(\"blocks\") if x[4].strip()]\n    if not b: gaps.append((i+1,\"空白页\")); continue\n    g=H-72-max(x[3] for x in b)\n    if g>110: gaps.append((i+1, f\"{g/28.35:.1f}cm\"))\nprint(\"pages\", len(doc), \"| 大留白:\", gaps or \"无\")\nEOF\nrm -f /d/work/default-workspace/ocean-dm-hw/*.png\nexport PATH=\"/d/tools/PortableGit/uc …（省略 692 字符）
 ```

@@ -523,6 +523,7 @@ def render_blocks(doc, blocks):
                 p.paragraph_format.space_after = Pt(3)
                 p.paragraph_format.line_spacing = 1.0
                 clean = text.replace("**", "")
+                p.paragraph_format.keep_with_next = True
                 cn(p.add_run(latex_to_text(clean) if "$" in clean else clean), "黑体", 10.5)
                 continue
             body_para(doc, text)
