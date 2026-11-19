@@ -3,8 +3,11 @@
 # 用法：bash tools/update_chatlog.sh
 set -e
 cd "$(dirname "$0")/.."
-python tools/export_chatlog.py
+# 本机默认 python 可能被别的环境抢占（如 ComfyUI 的 3.11），这里显式用 anaconda 3.14
+PY="${PY:-/d/anaconda3/python.exe}"
+[ -x "$PY" ] || PY=python
+"$PY" tools/export_chatlog.py
 cp "$TEMP/ocean_dm_results/chatlog/AI_CONVERSATION.md" chatlog/
 echo "已更新 chatlog/AI_CONVERSATION.md"
 echo "--- 自检 ---"
-python tools/check.py || { echo "自检未通过：先修问题再提交"; exit 1; }
+"$PY" tools/check.py || { echo "自检未通过：先修问题再提交"; exit 1; }
